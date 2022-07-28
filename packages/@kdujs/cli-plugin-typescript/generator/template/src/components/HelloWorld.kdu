@@ -1,0 +1,23 @@
+---
+extend: '@kdujs/cli-service/generator/template/src/components/HelloWorld.kdu'
+replace: !!js/regexp /<script>[^]*?<\/script>/
+---
+<script lang="ts">
+<%_ if (!options.classComponent) { _%>
+import Kdu from 'kdu';
+
+export default Kdu.extend({
+  name: 'HelloWorld',
+  props: {
+    msg: String,
+  },
+});
+<%_ } else { _%>
+import { Component, Prop, Kdu } from 'kdu-property-decorator';
+
+@Component
+export default class HelloWorld extends Kdu {
+  @Prop() private msg!: string;
+}
+<%_ } _%>
+</script>

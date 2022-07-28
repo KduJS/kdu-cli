@@ -1,0 +1,28 @@
+{
+  "name": "@kdujs/cli-overlay",
+  "version": "5.0.8",
+  "description": "error overlay & dev server middleware for kdu-cli",
+  "main": "dist/client.js",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kdujs/kdu-cli.git",
+    "directory": "packages/@kdujs/cli-overlay"
+  },
+  "keywords": [
+    "kdu",
+    "cli",
+    "cli-overlay"
+  ],
+  "author": "NKDuy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kdujs/kdu-cli/issues"
+  },
+  "homepage": "https://github.com/kdujs/kdu-cli/tree/main/packages/@kdujs/cli-overlay#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

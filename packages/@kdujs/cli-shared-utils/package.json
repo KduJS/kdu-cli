@@ -1,0 +1,39 @@
+{
+  "name": "@kdujs/cli-shared-utils",
+  "version": "5.0.8",
+  "description": "shared utilities for kdu-cli packages",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kdujs/kdu-cli.git",
+    "directory": "packages/@kdujs/cli-shared-utils"
+  },
+  "keywords": [
+    "kdu",
+    "cli",
+    "cli-shared-utils"
+  ],
+  "author": "NKDuy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kdujs/kdu-cli/issues"
+  },
+  "homepage": "https://github.com/kdujs/kdu-cli/tree/main/packages/@kdujs/cli-shared-utils#readme",
+  "dependencies": {
+    "@achrinza/node-ipc": "^9.2.5",
+    "@nkduy/launch-editor": "^2.2.1",
+    "chalk": "^4.1.2",
+    "execa": "^1.0.0",
+    "joi": "^17.4.0",
+    "lru-cache": "^6.0.0",
+    "node-fetch": "^2.6.7",
+    "open": "^8.0.2",
+    "ora": "^5.3.0",
+    "read-pkg": "^5.1.1",
+    "semver": "^7.3.4",
+    "strip-ansi": "^6.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

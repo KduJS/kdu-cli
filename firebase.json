@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "kdujs-cli",
+    "public": "docs/.witepress/dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
