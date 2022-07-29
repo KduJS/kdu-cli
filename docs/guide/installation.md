@@ -6,7 +6,7 @@ If you have the previous `kdu-cli` (1.x or 2.x) package installed globally, you 
 :::
 
 ::: tip Node Version Requirement
-Kdu CLI 4.x requires [Node.js](https://nodejs.org/) version 8.9 or above (v10+ recommended). You can manage multiple versions of Node on the same machine with [n](https://github.com/tj/n), [nvm](https://github.com/creationix/nvm) or [nvm-windows](https://github.com/coreybutler/nvm-windows).
+Kdu CLI 5.x requires [Node.js](https://nodejs.org/) version 8.9 or above (v10+ recommended). You can manage multiple versions of Node on the same machine with [n](https://github.com/tj/n), [nvm](https://github.com/creationix/nvm) or [nvm-windows](https://github.com/coreybutler/nvm-windows).
 :::
 
 To install the new package, use one of the following commands. You need administrator privileges to execute these unless npm was installed on your system through a Node.js version manager (e.g. n or nvm).

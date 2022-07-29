@@ -1,6 +1,6 @@
 {
   "name": "@kdujs/cli-plugin-router",
-  "version": "5.0.9-beta.0",
+  "version": "5.0.9",
   "description": "router plugin for kdu-cli",
   "main": "index.js",
   "repository": {
@@ -23,9 +23,9 @@
     "access": "public"
   },
   "dependencies": {
-    "@kdujs/cli-shared-utils": "^5.0.9-beta.0"
+    "@kdujs/cli-shared-utils": "^5.0.9"
   },
   "devDependencies": {
-    "@kdujs/cli-service": "^5.0.9-beta.0"
+    "@kdujs/cli-service": "^5.0.9"
   }
 }

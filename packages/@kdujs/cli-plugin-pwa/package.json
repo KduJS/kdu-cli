@@ -1,6 +1,6 @@
 {
   "name": "@kdujs/cli-plugin-pwa",
-  "version": "5.0.9-beta.0",
+  "version": "5.0.9",
   "description": "pwa plugin for kdu-cli",
   "main": "index.js",
   "repository": {
@@ -23,13 +23,13 @@
     "access": "public"
   },
   "dependencies": {
-    "@kdujs/cli-shared-utils": "^5.0.9-beta.0",
+    "@kdujs/cli-shared-utils": "^5.0.9",
     "html-webpack-plugin": "^5.1.0",
     "webpack": "^5.54.0",
     "workbox-webpack-plugin": "^6.1.0"
   },
   "devDependencies": {
-    "@kdujs/cli-service": "^5.0.9-beta.0",
+    "@kdujs/cli-service": "^5.0.9",
     "register-service-worker": "^1.7.2"
   }
 }
