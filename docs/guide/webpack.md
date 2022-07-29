@@ -144,7 +144,7 @@ module.exports = {
 }
 ```
 
-You can confirm that this change has taken place by examining the vue webpack config with the `vue inspect` utility, which we will discuss next.
+You can confirm that this change has taken place by examining the kdu webpack config with the `kdu inspect` utility, which we will discuss next.
 
 ## Inspecting the Project's Webpack Config
 

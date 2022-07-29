@@ -2,7 +2,7 @@
 
 ## General Guidelines
 
-If you are using Vue CLI along with a backend framework that handles static assets as part of its deployment, all you need to do is make sure Vue CLI generates the built files in the correct location, and then follow the deployment instruction of your backend framework.
+If you are using Kdu CLI along with a backend framework that handles static assets as part of its deployment, all you need to do is make sure Kdu CLI generates the built files in the correct location, and then follow the deployment instruction of your backend framework.
 
 If you are developing your frontend app separately from your backend - i.e. your backend exposes an API for your frontend to talk to, then your frontend is essentially a purely static app. You can deploy the built content in the `dist` directory to any static file server, but make sure to set the correct [publicPath](../config/#publicpath).
 
@@ -145,7 +145,7 @@ Typically, your static website will be hosted on https://yourUserName.gitlab.io/
 
 
 ```javascript
-// vue.config.js file to be placed in the root of your repository
+// kdu.config.js file to be placed in the root of your repository
 
 module.exports = {
   publicPath: process.env.NODE_ENV === 'production'

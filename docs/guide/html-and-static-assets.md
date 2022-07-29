@@ -80,7 +80,7 @@ Prefetch links will consume bandwidth. If you have a large app with many async c
 When using Kdu CLI with an existing backend, you may need to disable the generation of `index.html` so that the generated assets can be used in a server-rendered page. To do so, the following can be added to [`kdu.config.js`](../config/#kdu-config-js):
 
 ``` js
-// vue.config.js
+// kdu.config.js
 module.exports = {
   // disable hashes in filenames
   filenameHashing: false,

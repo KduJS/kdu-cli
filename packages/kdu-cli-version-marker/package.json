@@ -1,11 +1,11 @@
 {
   "name": "kdu-cli-version-marker",
-  "version": "5.0.8",
+  "version": "5.0.9-beta.0",
   "description": "version marker for @kdujs/cli",
   "author": "NKDuy",
   "license": "MIT",
   "main": "package.json",
   "devDependencies": {
-    "@kdujs/cli": "^5.0.8"
+    "@kdujs/cli": "^5.0.9-beta.0"
   }
 }

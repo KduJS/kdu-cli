@@ -110,7 +110,7 @@ file, or the `"kdu"` field in `package.json`.
 ### Example Configuration
 
 ```js
-// Inside vue.config.js
+// Inside kdu.config.js
 module.exports = {
   // ...other kdu-cli plugin options...
   pwa: {
