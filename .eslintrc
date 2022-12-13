@@ -1,0 +1,7 @@
+{
+  "extends": ["plugin:kdu-libs/recommended"],
+  "env": {
+    "mocha": true,
+    "node": true
+  }
+}
