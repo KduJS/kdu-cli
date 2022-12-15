@@ -1,0 +1,27 @@
+{
+  "name": "@kdujs/cli-init",
+  "version": "3.0.0",
+  "description": "init addon for kdu-cli",
+  "main": "index.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kdujs/kdu-cli.git"
+  },
+  "keywords": [
+    "kdu",
+    "cli"
+  ],
+  "author": "NKDuy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kdujs/kdu-cli/issues"
+  },
+  "homepage": "https://github.com/kdujs/kdu-cli/tree/main/packages/@kdujs/cli-init#readme",
+  "dependencies": {
+    "execa": "^0.10.0",
+    "kdu-cli": "^2.9.4"
+  }
+}

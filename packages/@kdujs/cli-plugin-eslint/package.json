@@ -1,0 +1,31 @@
+{
+  "name": "@kdujs/cli-plugin-eslint",
+  "version": "3.0.0",
+  "description": "eslint plugin for kdu-cli",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kdujs/kdu-cli.git"
+  },
+  "keywords": [
+    "kdu",
+    "cli",
+    "eslint"
+  ],
+  "author": "NKDuy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kdujs/kdu-cli/issues"
+  },
+  "homepage": "https://github.com/kdujs/kdu-cli/tree/main/packages/@kdujs/cli-plugin-eslint#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@kdujs/cli-shared-utils": "^3.0.0",
+    "babel-eslint": "^8.2.5",
+    "eslint": "^4.19.1",
+    "eslint-loader": "^2.0.0",
+    "eslint-plugin-kdu": "^4.5.1"
+  }
+}
