@@ -80,7 +80,7 @@ const release = async () => {
     })
     delete process.env.PREFIX
     await execa('git', ['add', '-A'], { stdio: 'inherit' })
-    await execa('git', ['commit', '-m', '"chore: pre release sync"'], { stdio: 'inherit' })
+    await execa('git', ['commit', '-m', 'chore: pre release sync'], { stdio: 'inherit' })
   }
 
   await execa(require.resolve('lerna/bin/lerna'), [
