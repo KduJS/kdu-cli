@@ -25,9 +25,9 @@
   "dependencies": {
     "@kdujs/cli-shared-utils": "^4.0.4",
     "@types/webpack-env": "^1.13.9",
-    "fork-ts-checker-webpack-plugin": "^1.3.4",
+    "fork-ts-checker-webpack-plugin": "^1.5.1",
     "globby": "^9.2.0",
-    "ts-loader": "^6.0.1",
+    "ts-loader": "^6.2.0",
     "tslint": "^5.16.0",
     "webpack": "^4.0.0",
     "yorkie": "^2.0.0"
@@ -41,7 +41,7 @@
     "@types/jest": "^24.0.11",
     "@types/mocha": "^5.2.6",
     "kdu-class-component": "^7.0.2",
-    "kdu-property-decorator": "^8.1.0",
+    "kdu-property-decorator": "^8.3.0",
     "typescript": "^3.4.5"
   }
 }

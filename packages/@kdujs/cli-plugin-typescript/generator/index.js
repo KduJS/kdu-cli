@@ -19,7 +19,7 @@ module.exports = (api, {
     api.extendPackage({
       dependencies: {
         'kdu-class-component': '^7.0.2',
-        'kdu-property-decorator': '^8.1.0'
+        'kdu-property-decorator': '^8.3.0'
       }
     })
   }

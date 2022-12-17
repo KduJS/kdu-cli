@@ -4,7 +4,7 @@ module.exports = (api, options = {}) => {
 
   api.extendPackage({
     dependencies: {
-      'kdu-router': '^3.0.7'
+      'kdu-router': '^3.1.6'
     }
   })
 

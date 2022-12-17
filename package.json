@@ -29,23 +29,23 @@
     ]
   },
   "devDependencies": {
-    "@babel/core": "^7.4.5",
+    "@babel/core": "^7.6.4",
     "@kdujs/eslint-config-airbnb": "^5.0.0",
     "@kdujs/eslint-config-prettier": "^5.0.0",
     "@kdujs/eslint-config-standard": "^5.0.0",
     "@kdujs/eslint-config-typescript": "^5.0.0",
     "babel-core": "7.0.0-bridge.0",
-    "babel-eslint": "^10.0.1",
+    "babel-eslint": "^10.0.3",
     "chromedriver": "^77.0.0",
     "debug": "^4.1.0",
     "eslint": "^5.16.0",
-    "eslint-plugin-graphql": "^3.0.3",
+    "eslint-plugin-graphql": "^3.1.0",
     "eslint-plugin-node": "^9.1.0",
-    "eslint-plugin-prettier": "^3.1.0",
+    "eslint-plugin-prettier": "^3.1.1",
     "eslint-plugin-kdu": "^5.0.0",
     "eslint-plugin-kdu-libs": "^3.0.2",
     "execa": "^1.0.0",
-    "geckodriver": "^1.16.2",
+    "geckodriver": "^1.19.0",
     "globby": "^9.2.0",
     "graphql": "^14.3.1",
     "http-server": "^0.11.1",
@@ -66,6 +66,7 @@
   "resolutions": {
     "kdu": "^2.6.14",
     "kdu-template-compiler": "^2.6.14",
-    "kdu-server-renderer": "^2.6.14"
+    "kdu-server-renderer": "^2.6.14",
+    "puppeteer": "1.11.0"
   }
 }

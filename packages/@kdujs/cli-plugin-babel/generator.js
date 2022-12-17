@@ -10,7 +10,7 @@ module.exports = api => {
       presets: ['@kdujs/cli-plugin-babel/preset']
     },
     dependencies: {
-      'core-js': '^3.1.2'
+      'core-js': '^3.3.2'
     }
   })
 }
