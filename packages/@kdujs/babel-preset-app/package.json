@@ -1,6 +1,6 @@
 {
   "name": "@kdujs/babel-preset-app",
-  "version": "4.0.0",
+  "version": "4.0.2",
   "description": "babel-preset-app for kdu-cli",
   "main": "index.js",
   "publishConfig": {
