@@ -1,5 +1,3 @@
-const { execa } = require('@kdujs/cli-shared-utils')
-
 module.exports = (api, options) => {
   api.render('./template', {
     doesCompile: api.hasPlugin('babel') || api.hasPlugin('typescript')
@@ -58,39 +56,12 @@ module.exports = (api, options) => {
 
   // for v3 compatibility
   if (options.router && !api.hasPlugin('router')) {
-    api.extendPackage({
-      devDependencies: {
-        '@kdujs/cli-plugin-router': '^4.0.0'
-      }
-    })
-
-    api.onCreateComplete(() => {
-      execa.sync('kdu', [
-        'invoke',
-        '@kdujs/cli-plugin-router',
-        `--historyMode=${options.routerHistoryMode ? 'true' : ''}`
-      ], {
-        cwd: api.resolve('.')
-      })
-    })
+    require('./router')(api, options)
   }
 
   // for v3 compatibility
   if (options.kdux && !api.hasPlugin('kdux')) {
-    api.extendPackage({
-      devDependencies: {
-        '@kdujs/cli-plugin-kdux': '^4.0.0'
-      }
-    })
-
-    api.onCreateComplete(() => {
-      execa.sync('kdu', [
-        'invoke',
-        '@kdujs/cli-plugin-kdux'
-      ], {
-        cwd: api.resolve('.')
-      })
-    })
+    require('./kdux')(api)
   }
 
   // additional tooling configurations

@@ -25,6 +25,8 @@
   "dependencies": {
     "@intervolga/optimize-cssnano-plugin": "^1.0.5",
     "@kdujs/cli-overlay": "^4.0.2",
+    "@kdujs/cli-plugin-router": "^4.0.2",
+    "@kdujs/cli-plugin-kdux": "^4.0.2",
     "@kdujs/cli-shared-utils": "^4.0.2",
     "@kdujs/component-compiler-utils": "^3.0.0",
     "@kdujs/preload-webpack-plugin": "^1.1.0",
