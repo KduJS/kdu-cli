@@ -1,7 +1,7 @@
 ---
 extend: '@kdujs/cli-service/generator/template/src/App.kdu'
 replace:
-  - !!js/regexp /Welcome to Your Kdu\.js App/
+  - !!js/regexp /Welcome to Your Kdu\.js App/g
   - !!js/regexp /<script>[^]*?<\/script>/
 ---
 

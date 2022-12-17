@@ -3,12 +3,13 @@ const chalk = require('chalk')
 const debug = require('debug')
 const execa = require('execa')
 const inquirer = require('inquirer')
+const semver = require('semver')
 const EventEmitter = require('events')
 const Generator = require('./Generator')
 const cloneDeep = require('lodash.clonedeep')
 const sortObject = require('./util/sortObject')
 const getVersions = require('./util/getVersions')
-const { installDeps } = require('./util/installDeps')
+const PackageManager = require('./util/ProjectPackageManager')
 const { clearConsole } = require('./util/clearConsole')
 const PromptModuleAPI = require('./PromptModuleAPI')
 const writeFileTree = require('./util/writeFileTree')
@@ -32,6 +33,8 @@ const {
   hasGit,
   hasProjectGit,
   hasYarn,
+  hasPnpm3OrLater,
+  hasPnpmVersionOrLater,
   logWithSpinner,
   stopSpinner,
   exit,
@@ -52,7 +55,8 @@ module.exports = class Creator extends EventEmitter {
     this.outroPrompts = this.resolveOutroPrompts()
     this.injectedPrompts = []
     this.promptCompleteCbs = []
-    this.createCompleteCbs = []
+    this.afterInvokeCbs = []
+    this.afterAnyInvokeCbs = []
 
     this.run = this.run.bind(this)
 
@@ -62,7 +66,7 @@ module.exports = class Creator extends EventEmitter {
 
   async create (cliOptions = {}, preset = null) {
     const isTestOrDebug = process.env.KDU_CLI_TEST || process.env.KDU_CLI_DEBUG
-    const { run, name, context, createCompleteCbs } = this
+    const { run, name, context, afterInvokeCbs, afterAnyInvokeCbs } = this
 
     if (!preset) {
       if (cliOptions.preset) {
@@ -89,22 +93,46 @@ module.exports = class Creator extends EventEmitter {
     // inject core service
     preset.plugins['@kdujs/cli-service'] = Object.assign({
       projectName: name
-    }, preset, {
-      bare: cliOptions.bare
-    })
+    }, preset)
+
+    if (cliOptions.bare) {
+      preset.plugins['@kdujs/cli-service'].bare = true
+    }
+
+    // legacy support for router
+    if (preset.router) {
+      preset.plugins['@kdujs/cli-plugin-router'] = {}
+
+      if (preset.routerHistoryMode) {
+        preset.plugins['@kdujs/cli-plugin-router'].historyMode = true
+      }
+    }
+
+    // legacy support for kdux
+    if (preset.kdux) {
+      preset.plugins['@kdujs/cli-plugin-kdux'] = {}
+    }
 
     const packageManager = (
       cliOptions.packageManager ||
       loadOptions().packageManager ||
-      (hasYarn() ? 'yarn' : 'npm')
+      (hasYarn() ? 'yarn' : null) ||
+      (hasPnpm3OrLater() ? 'pnpm' : 'npm')
     )
+    const pm = new PackageManager({ context, forcePackageManager: packageManager })
 
     await clearConsole()
     logWithSpinner(`✨`, `Creating project in ${chalk.yellow(context)}.`)
     this.emit('creation', { event: 'creating' })
 
     // get latest CLI version
-    const { latest } = await getVersions()
+    const { current, latest } = await getVersions()
+    let latestMinor = `${semver.major(latest)}.${semver.minor(latest)}.0`
+
+    // if using `next` branch of cli
+    if (semver.gte(current, latest) && semver.prerelease(current)) {
+      latestMinor = current
+    }
     // generate package.json with plugin dependencies
     const pkg = {
       name,
@@ -117,11 +145,16 @@ module.exports = class Creator extends EventEmitter {
       if (preset.plugins[dep]._isPreset) {
         return
       }
+
+      // Note: the default creator includes no more than `@kdujs/cli-*` & `@kdujs/babel-preset-env`,
+      // so it is fine to only test `@kdujs` prefix.
+      // Other `@kdujs/*` packages' version may not be in sync with the cli itself.
       pkg.devDependencies[dep] = (
         preset.plugins[dep].version ||
-        (/^@kdujs/.test(dep) ? `^${latest}` : `latest`)
+        ((/^@kdujs/.test(dep)) ? `^${latestMinor}` : `latest`)
       )
     })
+
     // write package.json
     await writeFileTree(context, {
       'package.json': JSON.stringify(pkg, null, 2)
@@ -129,7 +162,7 @@ module.exports = class Creator extends EventEmitter {
 
     // intilaize git repository before installing deps
     // so that kdu-cli-service can setup git hooks.
-    const shouldInitGit = await this.shouldInitGit(cliOptions)
+    const shouldInitGit = this.shouldInitGit(cliOptions)
     if (shouldInitGit) {
       logWithSpinner(`🗃`, `Initializing git repository...`)
       this.emit('creation', { event: 'git-init' })
@@ -141,11 +174,12 @@ module.exports = class Creator extends EventEmitter {
     log(`⚙  Installing CLI plugins. This might take a while...`)
     log()
     this.emit('creation', { event: 'plugins-install' })
-    if (isTestOrDebug) {
+
+    if (isTestOrDebug && !process.env.KDU_CLI_TEST_DO_INSTALL_PLUGIN) {
       // in development, avoid installation process
       await require('./util/setupDevProject')(context)
     } else {
-      await installDeps(context, packageManager, cliOptions.registry)
+      await pm.install()
     }
 
     // run generator
@@ -155,7 +189,8 @@ module.exports = class Creator extends EventEmitter {
     const generator = new Generator(context, {
       pkg,
       plugins,
-      completeCbs: createCompleteCbs
+      afterInvokeCbs,
+      afterAnyInvokeCbs
     })
     await generator.generate({
       extractConfigFiles: preset.useConfigFiles
@@ -166,13 +201,16 @@ module.exports = class Creator extends EventEmitter {
     this.emit('creation', { event: 'deps-install' })
     log()
     if (!isTestOrDebug) {
-      await installDeps(context, packageManager, cliOptions.registry)
+      await pm.install()
     }
 
     // run complete cbs if any (injected by generators)
     logWithSpinner('⚓', `Running completion hooks...`)
     this.emit('creation', { event: 'completion-hooks' })
-    for (const cb of createCompleteCbs) {
+    for (const cb of afterInvokeCbs) {
+      await cb()
+    }
+    for (const cb of afterAnyInvokeCbs) {
       await cb()
     }
 
@@ -183,6 +221,17 @@ module.exports = class Creator extends EventEmitter {
     await writeFileTree(context, {
       'README.md': generateReadme(generator.pkg, packageManager)
     })
+
+    // generate a .npmrc file for pnpm, to persist the `shamefully-flatten` flag
+    if (packageManager === 'pnpm') {
+      const pnpmConfig = hasPnpmVersionOrLater('4.0.0')
+        ? 'shamefully-hoist=true\n'
+        : 'shamefully-flatten=true\n'
+
+      await writeFileTree(context, {
+        '.npmrc': pnpmConfig
+      })
+    }
 
     // commit initial state
     let gitCommitFailed = false
@@ -204,11 +253,13 @@ module.exports = class Creator extends EventEmitter {
     stopSpinner()
     log()
     log(`🎉  Successfully created project ${chalk.yellow(name)}.`)
-    log(
-      `👉  Get started with the following commands:\n\n` +
-      (this.context === process.cwd() ? `` : chalk.cyan(` ${chalk.gray('$')} cd ${name}\n`)) +
-      chalk.cyan(` ${chalk.gray('$')} ${packageManager === 'yarn' ? 'yarn serve' : 'npm run serve'}`)
-    )
+    if (!cliOptions.skipGetStarted) {
+      log(
+        `👉  Get started with the following commands:\n\n` +
+        (this.context === process.cwd() ? `` : chalk.cyan(` ${chalk.gray('$')} cd ${name}\n`)) +
+        chalk.cyan(` ${chalk.gray('$')} ${packageManager === 'yarn' ? 'yarn serve' : packageManager === 'pnpm' ? 'pnpm run serve' : 'npm run serve'}`)
+      )
+    }
     log()
     this.emit('creation', { event: 'done' })
 
@@ -273,7 +324,7 @@ module.exports = class Creator extends EventEmitter {
 
     if (name in savedPresets) {
       preset = savedPresets[name]
-    } else if (name.endsWith('.json') || /^[./\\]/.test(name)) {
+    } else if (name.endsWith('.json') || /^\./.test(name) || path.isAbsolute(name)) {
       preset = await loadLocalPreset(path.resolve(name))
     } else if (name.includes('/')) {
       logWithSpinner(`Fetching remote preset ${chalk.cyan(name)}...`)
@@ -310,7 +361,7 @@ module.exports = class Creator extends EventEmitter {
   // { id: options } => [{ id, apply, options }]
   async resolvePlugins (rawPlugins) {
     // ensure cli-service is invoked first
-    rawPlugins = sortObject(rawPlugins, ['@kdujs/cli-service'])
+    rawPlugins = sortObject(rawPlugins, ['@kdujs/cli-service'], true)
     const plugins = []
     for (const id of Object.keys(rawPlugins)) {
       const apply = loadModule(`${id}/generator`, this.context) || (() => {})
@@ -402,23 +453,36 @@ module.exports = class Creator extends EventEmitter {
 
     // ask for packageManager once
     const savedOptions = loadOptions()
-    if (!savedOptions.packageManager && hasYarn()) {
+    if (!savedOptions.packageManager && (hasYarn() || hasPnpm3OrLater())) {
+      const packageManagerChoices = []
+
+      if (hasYarn()) {
+        packageManagerChoices.push({
+          name: 'Use Yarn',
+          value: 'yarn',
+          short: 'Yarn'
+        })
+      }
+
+      if (hasPnpm3OrLater()) {
+        packageManagerChoices.push({
+          name: 'Use PNPM',
+          value: 'pnpm',
+          short: 'PNPM'
+        })
+      }
+
+      packageManagerChoices.push({
+        name: 'Use NPM',
+        value: 'npm',
+        short: 'NPM'
+      })
+
       outroPrompts.push({
         name: 'packageManager',
         type: 'list',
         message: 'Pick the package manager to use when installing dependencies:',
-        choices: [
-          {
-            name: 'Use Yarn',
-            value: 'yarn',
-            short: 'Yarn'
-          },
-          {
-            name: 'Use NPM',
-            value: 'npm',
-            short: 'NPM'
-          }
-        ]
+        choices: packageManagerChoices
       })
     }
 
@@ -443,7 +507,7 @@ module.exports = class Creator extends EventEmitter {
     return prompts
   }
 
-  async shouldInitGit (cliOptions) {
+  shouldInitGit (cliOptions) {
     if (!hasGit()) {
       return false
     }

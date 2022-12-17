@@ -8,7 +8,7 @@ module.exports = cli => {
 
   cli.onPromptComplete((answers, options) => {
     if (answers.features.includes('kdux')) {
-      options.kdux = true
+      options.plugins['@kdujs/cli-plugin-kdux'] = {}
     }
   })
 }

@@ -1,6 +1,15 @@
-const pluginRE = /^(@kdujs\/|kdu-|@[\w-]+\/kdu-)cli-plugin-/
-const scopeRE = /^@[\w-]+\//
+const pluginRE = /^(@kdujs\/|kdu-|@[\w-]+(\.)?[\w-]+\/kdu-)cli-plugin-/
+const scopeRE = /^@[\w-]+(\.)?[\w-]+\//
 const officialRE = /^@kdujs\//
+
+const officialPlugins = [
+  'babel',
+  'eslint',
+  'pwa',
+  'router',
+  'typescript',
+  'kdux'
+]
 
 exports.isPlugin = id => pluginRE.test(id)
 
@@ -13,6 +22,14 @@ exports.resolvePluginId = id => {
   // e.g. kdu-cli-plugin-foo, @kdujs/cli-plugin-foo, @bar/kdu-cli-plugin-foo
   if (pluginRE.test(id)) {
     return id
+  }
+
+  if (id === '@kdujs/cli-service') {
+    return id
+  }
+
+  if (officialPlugins.includes(id)) {
+    return `@kdujs/cli-plugin-${id}`
   }
   // scoped short
   // e.g. @kdujs/foo, @bar/foo

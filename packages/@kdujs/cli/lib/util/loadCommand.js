@@ -11,8 +11,13 @@ module.exports = function loadCommand (commandName, moduleName) {
       } catch (err2) {
         if (isNotFoundError(err2)) {
           const chalk = require('chalk')
-          const { hasYarn } = require('@kdujs/cli-shared-utils')
-          const installCommand = hasYarn() ? `yarn global add` : `npm install -g`
+          const { hasYarn, hasPnpm3OrLater } = require('@kdujs/cli-shared-utils')
+          let installCommand = `npm install -g`
+          if (hasYarn()) {
+            installCommand = `yarn global add`
+          } else if (hasPnpm3OrLater()) {
+            installCommand = `pnpm install -g`
+          }
           console.log()
           console.log(
             `  Command ${chalk.cyan(`kdu ${commandName}`)} requires a global addon to be installed.\n` +

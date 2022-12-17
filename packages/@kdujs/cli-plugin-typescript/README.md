@@ -25,7 +25,7 @@ If opted to use [TSLint](https://palantir.github.io/tslint/) during project crea
 ## Installing in an Already Created Project
 
 ``` sh
-kdu add @kdujs/typescript
+kdu add typescript
 ```
 
 ## Injected webpack-chain Rules

@@ -1,6 +1,6 @@
 ---
-extend: '@kdujs/cli-service/generator/router/template/src/views/Home.kdu'
-when: 'rootOptions.router'
+extend: '@kdujs/cli-plugin-router/generator/template/src/views/Home.kdu'
+when: "rootOptions.plugins && rootOptions.plugins['@kdujs/cli-plugin-router']"
 replace:
   - !!js/regexp /Welcome to Your Kdu\.js App/
   - !!js/regexp /<script>[^]*?<\/script>/

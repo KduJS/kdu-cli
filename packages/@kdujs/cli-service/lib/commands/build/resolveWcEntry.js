@@ -51,7 +51,7 @@ import Kdu from 'kdu'
 import wrap from '@kdujs/web-component-wrapper'
 
 // runtime shared by every component chunk
-import 'css-loader/lib/css-base'
+import 'css-loader/dist/runtime/api.js'
 import 'kdu-style-loader/lib/addStylesShadow'
 import 'kdu-loader/lib/runtime/componentNormalizer'
 

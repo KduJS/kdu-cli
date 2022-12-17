@@ -1,0 +1,28 @@
+{
+  "name": "@kdujs/cli-plugin-kdux",
+  "version": "4.0.0",
+  "description": "Kdux plugin for kdu-cli",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kdujs/kdu-cli.git",
+    "directory": "packages/@kdujs/cli-plugin-kdux"
+  },
+  "keywords": [
+    "kdu",
+    "cli",
+    "kdux"
+  ],
+  "author": "NKDuy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kdujs/kdu-cli/issues"
+  },
+  "homepage": "https://github.com/kdujs/kdu-cli/tree/main/packages/@kdujs/cli-plugin-kdux#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@kdujs/cli-service": "^3.0.0 || ^4.0.0"
+  }
+}

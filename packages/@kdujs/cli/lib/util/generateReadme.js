@@ -10,7 +10,7 @@ function printScripts (pkg, packageManager) {
     return [
       `\n### ${descriptions[key]}`,
       '```',
-      `${packageManager} run ${key}`,
+      `${packageManager} ${packageManager !== 'yarn' ? 'run ' : ''}${key}`,
       '```',
       ''
     ].join('\n')
@@ -24,6 +24,9 @@ module.exports = function generateReadme (pkg, packageManager) {
     '```',
     `${packageManager} install`,
     '```',
-    printScripts(pkg, packageManager)
+    printScripts(pkg, packageManager),
+    '### Customize configuration',
+    'See [Configuration Reference](https://kdujs-cli.web.app/config/).',
+    ''
   ].join('\n')
 }

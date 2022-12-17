@@ -1,7 +1,9 @@
 module.exports = (api, {
   classComponent,
   tsLint,
-  lintOn = []
+  lintOn = [],
+  convertJsToTs,
+  allowJs
 }, _, invoking) => {
   if (typeof lintOn === 'string') {
     lintOn = lintOn.split(',')
@@ -9,15 +11,15 @@ module.exports = (api, {
 
   api.extendPackage({
     devDependencies: {
-      typescript: '^3.0.0'
+      typescript: '~3.5.3'
     }
   })
 
   if (classComponent) {
     api.extendPackage({
       dependencies: {
-        'kdu-class-component': '^6.0.0',
-        'kdu-property-decorator': '^7.0.0'
+        'kdu-class-component': '^7.0.2',
+        'kdu-property-decorator': '^8.1.0'
       }
     })
   }
@@ -40,7 +42,7 @@ module.exports = (api, {
     if (lintOn.includes('commit')) {
       api.extendPackage({
         devDependencies: {
-          'lint-staged': '^6.0.0'
+          'lint-staged': '^8.1.5'
         },
         gitHooks: {
           'pre-commit': 'lint-staged'
@@ -72,5 +74,5 @@ module.exports = (api, {
     hasJest: api.hasPlugin('unit-jest')
   })
 
-  require('./convert')(api, { tsLint })
+  require('./convert')(api, { tsLint, convertJsToTs })
 }

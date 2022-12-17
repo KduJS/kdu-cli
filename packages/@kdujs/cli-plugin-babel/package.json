@@ -1,11 +1,12 @@
 {
   "name": "@kdujs/cli-plugin-babel",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "babel plugin for kdu-cli",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kdujs/kdu-cli.git"
+    "url": "git+https://github.com/kdujs/kdu-cli.git",
+    "directory": "packages/@kdujs/cli-plugin-babel"
   },
   "keywords": [
     "kdu",
@@ -19,9 +20,17 @@
   },
   "homepage": "https://github.com/kdujs/kdu-cli/tree/main/packages/@kdujs/cli-plugin-babel#readme",
   "dependencies": {
-    "@babel/core": "7.0.0-beta.47",
-    "@kdujs/babel-preset-app": "^3.0.0",
-    "babel-loader": "^8.0.0-0"
+    "@babel/core": "^7.4.5",
+    "@kdujs/babel-preset-app": "^4.0.0",
+    "@kdujs/cli-shared-utils": "^4.0.0",
+    "babel-loader": "^8.0.6",
+    "webpack": "^4.0.0"
+  },
+  "peerDependencies": {
+    "@kdujs/cli-service": "^3.0.0 || ^4.0.0"
+  },
+  "devDependencies": {
+    "jscodeshift": "^0.6.4"
   },
   "publishConfig": {
     "access": "public"

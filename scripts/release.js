@@ -27,6 +27,8 @@ How to do a release:
 6. Go to GitHub releases page and publish the release (this is required for
    the release to show up in the issue helper)
 
+Note: eslint-config-* packages should be released separately & manually.
+
 */
 
 process.env.KDU_CLI_RELEASE = true
@@ -34,7 +36,17 @@ process.env.KDU_CLI_RELEASE = true
 const execa = require('execa')
 const semver = require('semver')
 const inquirer = require('inquirer')
+const minimist = require('minimist')
 const { syncDeps } = require('./syncDeps')
+// const { buildEditorConfig } = require('./buildEditorConfig')
+
+const cliOptions = minimist(process.argv)
+if (cliOptions['local-registry']) {
+  inquirer.prompt = () => ({
+    bump: 'minor',
+    yes: true
+  })
+}
 
 const curVersion = require('../lerna.json').version
 
@@ -79,15 +91,40 @@ const release = async () => {
       skipPrompt: true
     })
     delete process.env.PREFIX
-    await execa('git', ['add', '-A'], { stdio: 'inherit' })
-    await execa('git', ['commit', '-m', 'chore: pre release sync'], { stdio: 'inherit' })
+
+    // buildEditorConfig()
+
+    try {
+      await execa('git', ['add', '-A'], { stdio: 'inherit' })
+      await execa('git', ['commit', '-m', 'chore: pre release sync'], { stdio: 'inherit' })
+    } catch (e) {
+      // if it's a patch release, there may be no local deps to sync
+    }
   }
 
-  await execa(require.resolve('lerna/bin/lerna'), [
+  const releaseType = semver.diff(curVersion, version)
+
+  let distTag = 'latest'
+  if (releaseType.startsWith('pre') && !cliOptions['local-registry']) {
+    distTag = 'next'
+  }
+
+  const lernaArgs = [
     'publish',
-    '--repo-version',
-    version
-  ], { stdio: 'inherit' })
+    version,
+    '--dist-tag',
+    distTag
+  ]
+  // keep packages' minor version in sync
+  if (releaseType !== 'patch') {
+    lernaArgs.push('--force-publish')
+  }
+
+  if (cliOptions['local-registry']) {
+    lernaArgs.push('--no-git-tag-version', '--no-commit-hooks', '--no-push', '--yes')
+  }
+
+  await execa(require.resolve('lerna/cli'), lernaArgs, { stdio: 'inherit' })
 }
 
 release().catch(err => {

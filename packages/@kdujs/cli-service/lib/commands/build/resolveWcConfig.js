@@ -1,7 +1,7 @@
 const path = require('path')
 const { resolveEntry, fileToComponentName } = require('./resolveWcEntry')
 
-module.exports = (api, { target, entry, name }) => {
+module.exports = (api, { target, entry, name, 'inline-kdu': inlineKdu }) => {
   // Disable CSS extraction and turn on CSS shadow mode for kdu-style-loader
   process.env.KDU_CLI_CSS_SHADOW_MODE = true
 
@@ -53,18 +53,10 @@ module.exports = (api, { target, entry, name }) => {
       config.optimization.minimize(false)
     }
 
-    // externalize Kdu in case user imports it
-    config
-      .externals({
-        kdu: 'Kdu'
-      })
-
     config
       .plugin('web-component-options')
-        .use(require('webpack/lib/DefinePlugin'), [{
-          'process.env': {
-            CUSTOM_ELEMENT_NAME: JSON.stringify(libName)
-          }
+        .use(require('webpack').DefinePlugin, [{
+          'process.env.CUSTOM_ELEMENT_NAME': JSON.stringify(libName)
         }])
 
     // enable shadow mode in kdu-loader
@@ -102,6 +94,12 @@ module.exports = (api, { target, entry, name }) => {
         .set('~root', api.resolve('.'))
 
     const rawConfig = api.resolveWebpackConfig(config)
+
+    // externalize Kdu in case user imports it
+    rawConfig.externals = [
+      ...(Array.isArray(rawConfig.externals) ? rawConfig.externals : [rawConfig.externals]),
+      { ...(inlineKdu || { kdu: 'Kdu' }) }
+    ].filter(Boolean)
 
     const entryName = `${libName}${minify ? `.min` : ``}`
     rawConfig.entry = {

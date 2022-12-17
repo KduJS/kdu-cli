@@ -4,7 +4,7 @@ const { toShortPluginId } = require('@kdujs/cli-shared-utils')
 exports.getFeatures = (preset) => {
   const features = []
   if (preset.router) {
-    features.push('kdu-router')
+    features.push('router')
   }
   if (preset.kdux) {
     features.push('kdux')

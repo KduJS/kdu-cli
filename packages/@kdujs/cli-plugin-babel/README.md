@@ -29,7 +29,7 @@ module.exports = {
 ## Installing in an Already Created Project
 
 ``` sh
-kdu add @kdujs/babel
+kdu add babel
 ```
 
 ## Injected webpack-chain Rules

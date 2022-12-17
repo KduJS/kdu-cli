@@ -8,9 +8,18 @@ module.exports = {
   env: {
     "jest": true
   },
+  globals: {
+    name: 'off'
+  },
   rules: {
     "indent": ["error", 2, {
       "MemberExpression": "off"
+    }],
+    "no-shadow": ["error"],
+    "node/no-extraneous-require": ["error", {
+      "allowModules": [
+        "@kdujs/cli-service"
+      ]
     }]
   },
   overrides: [

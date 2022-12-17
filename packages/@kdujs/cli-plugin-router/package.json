@@ -1,0 +1,31 @@
+{
+  "name": "@kdujs/cli-plugin-router",
+  "version": "4.0.0",
+  "description": "router plugin for kdu-cli",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kdujs/kdu-cli.git",
+    "directory": "packages/@kdujs/cli-plugin-router"
+  },
+  "keywords": [
+    "kdu",
+    "cli",
+    "router"
+  ],
+  "author": "NKDuy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kdujs/kdu-cli/issues"
+  },
+  "homepage": "https://github.com/kdujs/kdu-cli/tree/main/packages/@kdujs/cli-plugin-router#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@kdujs/cli-shared-utils": "^4.0.0"
+  },
+  "peerDependencies": {
+    "@kdujs/cli-service": "^3.0.0 || ^4.0.0"
+  }
+}

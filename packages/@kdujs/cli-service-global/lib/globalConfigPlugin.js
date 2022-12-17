@@ -24,6 +24,7 @@ module.exports = function createConfigPlugin (context, entry, asLib) {
         config.resolve
           .alias
             .set('core-js', path.dirname(require.resolve('core-js')))
+            .set('regenerator-runtime', path.dirname(require.resolve('regenerator-runtime')))
 
         // ensure loaders can be resolved properly
         // this is done by locating kdu's install location (which is a
@@ -47,6 +48,7 @@ module.exports = function createConfigPlugin (context, entry, asLib) {
           resolve.sync('kdu-hot-reload-api', { basedir: context })
         } catch (e) {
           config.resolve.alias
+            // eslint-disable-next-line node/no-extraneous-require
             .set('kdu-hot-reload-api', require.resolve('kdu-hot-reload-api'))
         }
 
@@ -101,13 +103,16 @@ module.exports = function createConfigPlugin (context, entry, asLib) {
               .add(/node_modules/)
               .end()
             .use('eslint-loader')
-              .tap(options => Object.assign({}, options, {
+              .tap(loaderOptions => Object.assign({}, loaderOptions, {
                 useEslintrc: hasESLintConfig,
                 baseConfig: {
                   extends: [
                     'plugin:kdu/essential',
                     'eslint:recommended'
-                  ]
+                  ],
+                  parserOptions: {
+                    parser: 'babel-eslint'
+                  }
                 }
               }))
 
