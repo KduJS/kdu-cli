@@ -42,7 +42,7 @@ module.exports = (api, options) => {
     const portfinder = require('portfinder')
     const prepareURLs = require('../util/prepareURLs')
     const prepareProxy = require('../util/prepareProxy')
-    const launchEditorMiddleware = require('launch-editor-middleware')
+    const launchEditorMiddleware = require('@nkduy/launch-editor-middleware')
     const validateWebpackConfig = require('../util/validateWebpackConfig')
     const isAbsoluteUrl = require('../util/isAbsoluteUrl')
 
