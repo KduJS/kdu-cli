@@ -13,6 +13,8 @@
     "sync": "node scripts/syncDeps.js",
     "boot": "node scripts/bootstrap.js",
     "release": "yarn --pure-lockfile && yarn clean && node scripts/release.js",
+    "docs": "witepress dev docs",
+    "docs:build": "witepress build docs",
     "patch-chromedriver": "node scripts/patchChromedriver.js"
   },
   "gitHooks": {
@@ -35,6 +37,7 @@
     "babel-jest": "^27.0.6",
     "chromedriver": "^103.0.0",
     "debug": "^4.1.0",
+    "docsearch.js": "^2.6.3",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.20.2",
@@ -49,6 +52,7 @@
     "http-server": "^0.12.3",
     "inquirer": "^8.0.0",
     "jest": "^27.0.6",
+    "kdu": "^3.2.33",
     "lerna": "^4.0.0",
     "lint-staged": "^11.1.2",
     "memfs": "^3.2.0",
@@ -62,6 +66,7 @@
     "typescript": "~4.5.5",
     "verdaccio": "^5.0.1",
     "webpack": "^5.54.0",
+    "witepress": "^0.22.4",
     "yorkie": "^2.0.0"
   },
   "resolutions": {
