@@ -1,3 +1,4 @@
+/* eslint-disable-next-line no-redeclare */
 /* global self */
 
 // This service worker file is effectively a 'no-op' that will reset any
@@ -10,6 +11,8 @@
 // file that will precache your site's local assets.
 
 self.addEventListener('install', () => self.skipWaiting())
+
+self.addEventListener('fetch', () => {})
 
 self.addEventListener('activate', () => {
   self.clients.matchAll({ type: 'window' }).then(windowClients => {

@@ -1,0 +1,27 @@
+---
+extend: '@kdujs/cli-service/generator/template/src/components/HelloWorld.kdu'
+replace: !!js/regexp /<script>[^]*?<\/script>/
+---
+<script lang="ts">
+<%_ if (!options.classComponent) { _%>
+import { defineComponent } from 'kdu';
+
+export default defineComponent({
+  name: 'HelloWorld',
+  props: {
+    msg: String,
+  },
+});
+<%_ } else { _%>
+import { Options, Kdu } from 'kdu-class-component';
+
+@Options({
+  props: {
+    msg: String
+  }
+})
+export default class HelloWorld extends Kdu {
+  msg!: string
+}
+<%_ } _%>
+</script>

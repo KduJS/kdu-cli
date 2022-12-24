@@ -9,3 +9,5 @@ temp
 .version
 .versions
 .idea
+package-lock.json
+.vscode

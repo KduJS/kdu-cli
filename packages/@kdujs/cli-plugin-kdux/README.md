@@ -4,6 +4,6 @@
 
 ## Installing in an Already Created Project
 
-``` sh
+```bash
 kdu add kdux
 ```

@@ -9,8 +9,11 @@ module.exports = api => {
     babel: {
       presets: ['@kdujs/cli-plugin-babel/preset']
     },
+    kdu: {
+      transpileDependencies: true
+    },
     dependencies: {
-      'core-js': '^3.3.2'
+      'core-js': '^3.8.3'
     }
   })
 }

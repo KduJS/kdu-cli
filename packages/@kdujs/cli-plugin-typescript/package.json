@@ -1,6 +1,6 @@
 {
   "name": "@kdujs/cli-plugin-typescript",
-  "version": "4.0.5",
+  "version": "5.0.0",
   "description": "typescript plugin for kdu-cli",
   "main": "index.js",
   "repository": {
@@ -23,25 +23,39 @@
     "access": "public"
   },
   "dependencies": {
-    "@kdujs/cli-shared-utils": "^4.0.5",
-    "@types/webpack-env": "^1.13.9",
-    "fork-ts-checker-webpack-plugin": "^1.5.1",
-    "globby": "^9.2.0",
-    "ts-loader": "^6.2.0",
-    "tslint": "^5.16.0",
-    "webpack": "^4.0.0",
+    "@babel/core": "^7.12.16",
+    "@kdujs/cli-shared-utils": "^5.0.0",
+    "@types/webpack-env": "^1.15.2",
+    "babel-loader": "^8.2.2",
+    "fork-ts-checker-webpack-plugin": "^6.4.0",
+    "globby": "^11.0.2",
+    "thread-loader": "^3.0.0",
+    "ts-loader": "^9.2.5",
+    "webpack": "^5.54.0",
     "yorkie": "^2.0.0"
   },
   "peerDependencies": {
-    "@kdujs/cli-service": "^3.0.0 || ^4.0.0",
+    "@kdujs/cli-service": "^3.0.0 || ^4.0.0 || ^5.0.0",
+    "cache-loader": "^4.1.0",
+    "kdu": "^2 || ^3.2.33",
+    "kdu-template-compiler": "^2.0.0",
     "typescript": ">=2"
   },
+  "peerDependenciesMeta": {
+    "cache-loader": {
+      "optional": true
+    },
+    "kdu-template-compiler": {
+      "optional": true
+    }
+  },
   "devDependencies": {
-    "@types/chai": "^4.1.0",
-    "@types/jest": "^24.0.11",
-    "@types/mocha": "^5.2.6",
-    "kdu-class-component": "^7.0.2",
-    "kdu-property-decorator": "^8.3.0",
-    "typescript": "^3.4.5"
+    "@types/chai": "^4.2.15",
+    "@types/jest": "^27.0.1",
+    "@types/mocha": "^8.2.1",
+    "jscodeshift": "^0.13.0",
+    "kdu-class-component": "^7.2.3",
+    "kdu-property-decorator": "^9.1.2",
+    "typescript": "~4.5.5"
   }
 }

@@ -1,5 +1,6 @@
 ---
 extend: '@kdujs/cli-service/generator/template/src/App.kdu'
+when: "rootOptions.plugins && !rootOptions.plugins['@kdujs/cli-plugin-router']"
 replace:
   - !!js/regexp /Welcome to Your Kdu\.js App/g
   - !!js/regexp /<script>[^]*?<\/script>/
@@ -16,7 +17,7 @@ import Kdu from 'kdu';
 import HelloWorld from './components/HelloWorld.kdu';
 
 export default Kdu.extend({
-  name: 'app',
+  name: 'App',
   components: {
     HelloWorld
   }

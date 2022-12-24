@@ -1,3 +1,5 @@
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+
 const ID = 'kdu-cli:pwa-html-plugin'
 
 const defaults = {
@@ -23,6 +25,18 @@ const defaultManifest = {
       'src': './img/icons/android-chrome-512x512.png',
       'sizes': '512x512',
       'type': 'image/png'
+    },
+    {
+      'src': './img/icons/android-chrome-maskable-192x192.png',
+      'sizes': '192x192',
+      'type': 'image/png',
+      'purpose': 'maskable'
+    },
+    {
+      'src': './img/icons/android-chrome-maskable-512x512.png',
+      'sizes': '512x512',
+      'type': 'image/png',
+      'purpose': 'maskable'
     }
   ],
   start_url: '.',
@@ -31,6 +45,7 @@ const defaultManifest = {
 }
 
 const defaultIconPaths = {
+  faviconSVG: 'img/icons/favicon.svg',
   favicon32: 'img/icons/favicon-32x32.png',
   favicon16: 'img/icons/favicon-16x16.png',
   appleTouchIcon: 'img/icons/apple-touch-icon-152x152.png',
@@ -47,13 +62,13 @@ module.exports = class HtmlPwaPlugin {
 
   apply (compiler) {
     compiler.hooks.compilation.tap(ID, compilation => {
-      compilation.hooks.htmlWebpackPluginBeforeHtmlProcessing.tapAsync(ID, (data, cb) => {
+      HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(ID, (data, cb) => {
         // wrap favicon in the base template with IE only comment
         data.html = data.html.replace(/<link rel="icon"[^>]+>/, '<!--[if IE]>$&<![endif]-->')
         cb(null, data)
       })
 
-      compilation.hooks.htmlWebpackPluginAlterAssetTags.tapAsync(ID, (data, cb) => {
+      HtmlWebpackPlugin.getHooks(compilation).alterAssetTagGroups.tapAsync(ID, (data, cb) => {
         const {
           name,
           themeColor,
@@ -69,39 +84,57 @@ module.exports = class HtmlPwaPlugin {
 
         const assetsVersionStr = assetsVersion ? `?v=${assetsVersion}` : ''
 
-        data.head.push(
-          // Favicons
-          makeTag('link', {
+        // Favicons
+        if (iconPaths.faviconSVG != null) {
+          data.headTags.push(makeTag('link', {
+            rel: 'icon',
+            type: 'image/svg+xml',
+            href: getTagHref(publicPath, iconPaths.faviconSVG, assetsVersionStr)
+          }))
+        }
+        if (iconPaths.favicon32 != null) {
+          data.headTags.push(makeTag('link', {
             rel: 'icon',
             type: 'image/png',
             sizes: '32x32',
-            href: `${publicPath}${iconPaths.favicon32}${assetsVersionStr}`
-          }),
-          makeTag('link', {
+            href: getTagHref(publicPath, iconPaths.favicon32, assetsVersionStr)
+          }))
+        }
+        if (iconPaths.favicon16 != null) {
+          data.headTags.push(makeTag('link', {
             rel: 'icon',
             type: 'image/png',
             sizes: '16x16',
-            href: `${publicPath}${iconPaths.favicon16}${assetsVersionStr}`
-          }),
+            href: getTagHref(publicPath, iconPaths.favicon16, assetsVersionStr)
+          }))
+        }
 
-          // Add to home screen for Android and modern mobile browsers
+        // Add to home screen for Android and modern mobile browsers
+        data.headTags.push(
           makeTag('link', manifestCrossorigin
             ? {
               rel: 'manifest',
-              href: `${publicPath}${manifestPath}${assetsVersionStr}`,
+              href: getTagHref(publicPath, manifestPath, assetsVersionStr),
               crossorigin: manifestCrossorigin
             }
             : {
               rel: 'manifest',
-              href: `${publicPath}${manifestPath}${assetsVersionStr}`
+              href: getTagHref(publicPath, manifestPath, assetsVersionStr)
             }
-          ),
-          makeTag('meta', {
-            name: 'theme-color',
-            content: themeColor
-          }),
+          )
+        )
 
-          // Add to home screen for Safari on iOS
+        if (themeColor != null) {
+          data.headTags.push(
+            makeTag('meta', {
+              name: 'theme-color',
+              content: themeColor
+            })
+          )
+        }
+
+        // Add to home screen for Safari on iOS
+        data.headTags.push(
           makeTag('meta', {
             name: 'apple-mobile-web-app-capable',
             content: appleMobileWebAppCapable
@@ -113,33 +146,43 @@ module.exports = class HtmlPwaPlugin {
           makeTag('meta', {
             name: 'apple-mobile-web-app-title',
             content: name
-          }),
-          makeTag('link', {
-            rel: 'apple-touch-icon',
-            href: `${publicPath}${iconPaths.appleTouchIcon}${assetsVersionStr}`
-          }),
-          makeTag('link', {
-            rel: 'mask-icon',
-            href: `${publicPath}${iconPaths.maskIcon}${assetsVersionStr}`,
-            color: themeColor
-          }),
-
-          // Add to home screen for Windows
-          makeTag('meta', {
-            name: 'msapplication-TileImage',
-            content: `${publicPath}${iconPaths.msTileImage}${assetsVersionStr}`
-          }),
-          makeTag('meta', {
-            name: 'msapplication-TileColor',
-            content: msTileColor
           })
         )
+        if (iconPaths.appleTouchIcon != null) {
+          data.headTags.push(makeTag('link', {
+            rel: 'apple-touch-icon',
+            href: getTagHref(publicPath, iconPaths.appleTouchIcon, assetsVersionStr)
+          }))
+        }
+        if (iconPaths.maskIcon != null) {
+          data.headTags.push(makeTag('link', {
+            rel: 'mask-icon',
+            href: getTagHref(publicPath, iconPaths.maskIcon, assetsVersionStr),
+            color: themeColor
+          }))
+        }
+
+        // Add to home screen for Windows
+        if (iconPaths.msTileImage != null) {
+          data.headTags.push(makeTag('meta', {
+            name: 'msapplication-TileImage',
+            content: getTagHref(publicPath, iconPaths.msTileImage, assetsVersionStr)
+          }))
+        }
+        if (msTileColor != null) {
+          data.headTags.push(
+            makeTag('meta', {
+              name: 'msapplication-TileColor',
+              content: msTileColor
+            })
+          )
+        }
 
         cb(null, data)
       })
     })
 
-    compiler.hooks.emit.tapAsync(ID, (data, cb) => {
+    if (!isHrefAbsoluteUrl(this.options.manifestPath)) {
       const {
         name,
         themeColor,
@@ -154,19 +197,37 @@ module.exports = class HtmlPwaPlugin {
       const outputManifest = JSON.stringify(
         Object.assign(publicOptions, defaultManifest, manifestOptions)
       )
-      data.assets[manifestPath] = {
+      const manifestAsset = {
         source: () => outputManifest,
         size: () => outputManifest.length
       }
-      cb(null, data)
-    })
+
+      compiler.hooks.compilation.tap(ID, compilation => {
+        compilation.hooks.processAssets.tap(
+          { name: ID, stage: 'PROCESS_ASSETS_STAGE_ADDITIONS' },
+          assets => { assets[manifestPath] = manifestAsset }
+        )
+      })
+    }
   }
 }
 
-function makeTag (tagName, attributes, closeTag = false) {
+function makeTag (tagName, attributes, voidTag = true) {
   return {
     tagName,
-    closeTag,
+    voidTag,
     attributes
   }
+}
+
+function getTagHref (publicPath, href, assetsVersionStr) {
+  let tagHref = `${href}${assetsVersionStr}`
+  if (!isHrefAbsoluteUrl(href)) {
+    tagHref = `${publicPath}${tagHref}`
+  }
+  return tagHref
+}
+
+function isHrefAbsoluteUrl (href) {
+  return /(http(s?)):\/\//gi.test(href)
 }

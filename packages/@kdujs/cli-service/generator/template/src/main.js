@@ -1,3 +1,9 @@
+<%_ if (rootOptions.kduVersion === '3') { _%>
+import { createApp } from 'kdu'
+import App from './App.kdu'
+
+createApp(App).mount('#app')
+<%_ } else { _%>
 import Kdu from 'kdu'
 import App from './App.kdu'
 
@@ -10,3 +16,4 @@ new Kdu({
   render: function (h) { return h(App) },
   <%_ } _%>
 }).$mount('#app')
+<%_ } _%>

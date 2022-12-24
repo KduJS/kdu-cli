@@ -1,14 +1,23 @@
 const ejs = require('ejs')
 const debug = require('debug')
-const semver = require('semver')
 const GeneratorAPI = require('./GeneratorAPI')
 const PackageManager = require('./util/ProjectPackageManager')
 const sortObject = require('./util/sortObject')
 const writeFileTree = require('./util/writeFileTree')
 const inferRootOptions = require('./util/inferRootOptions')
 const normalizeFilePaths = require('./util/normalizeFilePaths')
-const runCodemod = require('./util/runCodemod')
-const { toShortPluginId, matchesPluginId, loadModule, isPlugin } = require('@kdujs/cli-shared-utils')
+const { runTransformation } = require('kdu-codemod')
+const {
+  semver,
+
+  isPlugin,
+  toShortPluginId,
+  matchesPluginId,
+
+  loadModule,
+
+  sortPlugins
+} = require('@kdujs/cli-shared-utils')
 const ConfigTransform = require('./ConfigTransform')
 
 const logger = require('@kdujs/cli-shared-utils/lib/logger')
@@ -49,6 +58,13 @@ const defaultConfigTransforms = {
     file: {
       lines: ['.browserslistrc']
     }
+  }),
+  'lint-staged': new ConfigTransform({
+    file: {
+      js: ['lint-staged.config.js'],
+      json: ['.lintstagedrc', '.lintstagedrc.json'],
+      yaml: ['.lintstagedrc.yaml', '.lintstagedrc.yml']
+    }
   })
 }
 
@@ -67,6 +83,24 @@ const ensureEOL = str => {
   return str
 }
 
+/**
+ * Collect created/modified files into set
+ * @param {Record<string,string|Buffer>} files
+ * @param {Set<string>} set
+ */
+const watchFiles = (files, set) => {
+  return new Proxy(files, {
+    set (target, key, value, receiver) {
+      set.add(key)
+      return Reflect.set(target, key, value, receiver)
+    },
+    deleteProperty (target, key) {
+      set.delete(key)
+      return Reflect.deleteProperty(target, key)
+    }
+  })
+}
+
 module.exports = class Generator {
   constructor (context, {
     pkg = {},
@@ -77,15 +111,13 @@ module.exports = class Generator {
     invoking = false
   } = {}) {
     this.context = context
-    this.plugins = plugins
+    this.plugins = sortPlugins(plugins)
     this.originalPkg = pkg
     this.pkg = Object.assign({}, pkg)
     this.pm = new PackageManager({ context })
     this.imports = {}
     this.rootOptions = {}
-    // we don't load the passed afterInvokes yet because we want to ignore them from other plugins
-    this.passedAfterInvokeCbs = afterInvokeCbs
-    this.afterInvokeCbs = []
+    this.afterInvokeCbs = afterInvokeCbs
     this.afterAnyInvokeCbs = afterAnyInvokeCbs
     this.configTransforms = {}
     this.defaultConfigTransforms = defaultConfigTransforms
@@ -94,16 +126,18 @@ module.exports = class Generator {
     // for conflict resolution
     this.depSources = {}
     // virtual file tree
-    this.files = files
+    this.files = Object.keys(files).length
+      // when execute `kdu add/invoke`, only created/modified files are written to disk
+      ? watchFiles(files, this.filesModifyRecord = new Set())
+      // all files need to be written to disk
+      : files
     this.fileMiddlewares = []
     this.postProcessFilesCbs = []
     // exit messages
     this.exitLogs = []
 
     // load all the other plugins
-    this.allPluginIds = Object.keys(this.pkg.dependencies || {})
-      .concat(Object.keys(this.pkg.devDependencies || {}))
-      .filter(isPlugin)
+    this.allPlugins = this.resolveAllPlugins()
 
     const cliService = plugins.find(p => p.id === '@kdujs/cli-service')
     const rootOptions = cliService
@@ -117,13 +151,16 @@ module.exports = class Generator {
     const { rootOptions, invoking } = this
     const pluginIds = this.plugins.map(p => p.id)
 
-    // apply hooks from all plugins
-    for (const id of this.allPluginIds) {
+    // avoid modifying the passed afterInvokes, because we want to ignore them from other plugins
+    const passedAfterInvokeCbs = this.afterInvokeCbs
+    this.afterInvokeCbs = []
+    // apply hooks from all plugins to collect 'afterAnyHooks'
+    for (const plugin of this.allPlugins) {
+      const { id, apply } = plugin
       const api = new GeneratorAPI(id, this, {}, rootOptions)
-      const pluginGenerator = loadModule(`${id}/generator`, this.context)
 
-      if (pluginGenerator && pluginGenerator.hooks) {
-        await pluginGenerator.hooks(api, {}, rootOptions, pluginIds)
+      if (apply.hooks) {
+        await apply.hooks(api, {}, rootOptions, pluginIds)
       }
     }
 
@@ -132,7 +169,7 @@ module.exports = class Generator {
     const afterAnyInvokeCbsFromPlugins = this.afterAnyInvokeCbs
 
     // reset hooks
-    this.afterInvokeCbs = this.passedAfterInvokeCbs
+    this.afterInvokeCbs = passedAfterInvokeCbs
     this.afterAnyInvokeCbs = []
     this.postProcessFilesCbs = []
 
@@ -145,13 +182,12 @@ module.exports = class Generator {
       if (apply.hooks) {
         // while we execute the entire `hooks` function,
         // only the `afterInvoke` hook is respected
-        // because `afterAnyHooks` is already determined by the `allPluginIds` loop above
+        // because `afterAnyHooks` is already determined by the `allPlugins` loop above
         await apply.hooks(api, options, rootOptions, pluginIds)
       }
-
-      // restore "any" hooks
-      this.afterAnyInvokeCbs = afterAnyInvokeCbsFromPlugins
     }
+    // restore "any" hooks
+    this.afterAnyInvokeCbs = afterAnyInvokeCbsFromPlugins
   }
 
   async generate ({
@@ -170,7 +206,7 @@ module.exports = class Generator {
     this.sortPkg()
     this.files['package.json'] = JSON.stringify(this.pkg, null, 2) + '\n'
     // write/update file tree to disk
-    await writeFileTree(this.context, this.files, initialFiles)
+    await writeFileTree(this.context, this.files, initialFiles, this.filesModifyRecord)
   }
 
   extractConfigFiles (extractAll, checkExisting) {
@@ -255,6 +291,19 @@ module.exports = class Generator {
     debug('kdu:cli-pkg')(this.pkg)
   }
 
+  resolveAllPlugins () {
+    const allPlugins = []
+    Object.keys(this.pkg.dependencies || {})
+      .concat(Object.keys(this.pkg.devDependencies || {}))
+      .forEach(id => {
+        if (!isPlugin(id)) return
+        const pluginGenerator = loadModule(`${id}/generator`, this.context)
+        if (!pluginGenerator) return
+        allPlugins.push({ id, apply: pluginGenerator })
+      })
+    return sortPlugins(allPlugins)
+  }
+
   async resolveFiles () {
     const files = this.files
     for (const middleware of this.fileMiddlewares) {
@@ -270,9 +319,9 @@ module.exports = class Generator {
       let imports = this.imports[file]
       imports = imports instanceof Set ? Array.from(imports) : imports
       if (imports && imports.length > 0) {
-        files[file] = runCodemod(
-          require('./util/codemods/injectImports'),
+        files[file] = runTransformation(
           { path: file, source: files[file] },
+          require('./util/codemods/injectImports'),
           { imports }
         )
       }
@@ -280,9 +329,9 @@ module.exports = class Generator {
       let injections = this.rootOptions[file]
       injections = injections instanceof Set ? Array.from(injections) : injections
       if (injections && injections.length > 0) {
-        files[file] = runCodemod(
-          require('./util/codemods/injectOptions'),
+        files[file] = runTransformation(
           { path: file, source: files[file] },
+          require('./util/codemods/injectOptions'),
           { injections }
         )
       }
@@ -294,22 +343,24 @@ module.exports = class Generator {
     debug('kdu:cli-files')(this.files)
   }
 
-  hasPlugin (_id, _version) {
-    return [
+  hasPlugin (id, versionRange) {
+    const pluginExists = [
       ...this.plugins.map(p => p.id),
-      ...this.allPluginIds
-    ].some(id => {
-      if (!matchesPluginId(_id, id)) {
-        return false
-      }
+      ...this.allPlugins.map(p => p.id)
+    ].some(pid => matchesPluginId(id, pid))
 
-      if (!_version) {
-        return true
-      }
+    if (!pluginExists) {
+      return false
+    }
 
-      const version = this.pm.getInstalledVersion(id)
-      return semver.satisfies(version, _version)
-    })
+    if (!versionRange) {
+      return pluginExists
+    }
+
+    return semver.satisfies(
+      this.pm.getInstalledVersion(id),
+      versionRange
+    )
   }
 
   printExitLogs () {

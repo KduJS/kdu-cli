@@ -6,6 +6,8 @@ Kdu.use(Kdux)
 export default new Kdux.Store({
   state: {
   },
+  getters: {
+  },
   mutations: {
   },
   actions: {

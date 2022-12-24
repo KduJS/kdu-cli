@@ -1,20 +1,36 @@
 const fs = require('fs')
 const ejs = require('ejs')
 const path = require('path')
-const merge = require('deepmerge')
+const deepmerge = require('deepmerge')
 const resolve = require('resolve')
 const { isBinaryFileSync } = require('isbinaryfile')
-const semver = require('semver')
 const mergeDeps = require('./util/mergeDeps')
-const runCodemod = require('./util/runCodemod')
+const { runTransformation } = require('kdu-codemod')
 const stringifyJS = require('./util/stringifyJS')
 const ConfigTransform = require('./ConfigTransform')
-const { getPluginLink, toShortPluginId, loadModule } = require('@kdujs/cli-shared-utils')
+const { semver, error, getPluginLink, toShortPluginId, loadModule } = require('@kdujs/cli-shared-utils')
 
 const isString = val => typeof val === 'string'
 const isFunction = val => typeof val === 'function'
 const isObject = val => val && typeof val === 'object'
 const mergeArrayWithDedupe = (a, b) => Array.from(new Set([...a, ...b]))
+function pruneObject (obj) {
+  if (typeof obj === 'object') {
+    for (const k in obj) {
+      if (!Object.prototype.hasOwnProperty.call(obj, k)) {
+        continue
+      }
+
+      if (obj[k] == null) {
+        delete obj[k]
+      } else {
+        obj[k] = pruneObject(obj[k])
+      }
+    }
+  }
+
+  return obj
+}
 
 class GeneratorAPI {
   /**
@@ -66,13 +82,27 @@ class GeneratorAPI {
   }
 
   /**
+   * Normalize absolute path, Windows-style path
+   * to the relative path used as index in this.files
+   * @param {string} p the path to normalize
+   */
+  _normalizePath (p) {
+    if (path.isAbsolute(p)) {
+      p = path.relative(this.generator.context, p)
+    }
+    // The `files` tree always use `/` in its index.
+    // So we need to normalize the path string in case the user passes a Windows path.
+    return p.replace(/\\/g, '/')
+  }
+
+  /**
    * Resolve path for a project.
    *
-   * @param {string} _path - Relative path from project root
-   * @return {string} The resolved absolute path.
+   * @param {string} _paths - A sequence of relative paths or path segments
+   * @return {string} The resolved absolute path, caculated based on the current project root.
    */
-  resolve (_path) {
-    return path.resolve(this.generator.context, _path)
+  resolve (..._paths) {
+    return path.resolve(this.generator.context, ..._paths)
   }
 
   get cliVersion () {
@@ -90,7 +120,7 @@ class GeneratorAPI {
       throw new Error('Expected string or integer value.')
     }
 
-    if (semver.satisfies(this.cliVersion, range)) return
+    if (semver.satisfies(this.cliVersion, range, { includePrerelease: true })) return
 
     throw new Error(
       `Require global @kdujs/cli "${range}", but was invoked by "${this.cliVersion}".`
@@ -124,7 +154,7 @@ class GeneratorAPI {
       throw new Error('Expected string or integer value.')
     }
 
-    if (semver.satisfies(this.cliServiceVersion, range)) return
+    if (semver.satisfies(this.cliServiceVersion, range, { includePrerelease: true })) return
 
     throw new Error(
       `Require @kdujs/cli-service "${range}", but was loaded with "${this.cliServiceVersion}".`
@@ -138,8 +168,8 @@ class GeneratorAPI {
    * @param {string} version - Plugin version. Defaults to ''
    * @return {boolean}
    */
-  hasPlugin (id, version) {
-    return this.generator.hasPlugin(id, version)
+  hasPlugin (id, versionRange) {
+    return this.generator.hasPlugin(id, versionRange)
   }
 
   /**
@@ -177,15 +207,37 @@ class GeneratorAPI {
 
   /**
    * Extend the package.json of the project.
-   * Nested fields are deep-merged unless `{ merge: false }` is passed.
    * Also resolves dependency conflicts between plugins.
    * Tool configuration fields may be extracted into standalone files before
    * files are written to disk.
    *
    * @param {object | () => object} fields - Fields to merge.
-   * @param {boolean} forceNewVersion - Ignore version conflicts when updating dependency version
+   * @param {object} [options] - Options for extending / merging fields.
+   * @param {boolean} [options.prune=false] - Remove null or undefined fields
+   *    from the object after merging.
+   * @param {boolean} [options.merge=true] deep-merge nested fields, note
+   *    that dependency fields are always deep merged regardless of this option.
+   * @param {boolean} [options.warnIncompatibleVersions=true] Output warning
+   *    if two dependency version ranges don't intersect.
+   * @param {boolean} [options.forceOverwrite=false] force using the dependency
+   * version provided in the first argument, instead of trying to get the newer ones
    */
-  extendPackage (fields, forceNewVersion) {
+  extendPackage (fields, options = {}) {
+    const extendOptions = {
+      prune: false,
+      merge: true,
+      warnIncompatibleVersions: true,
+      forceOverwrite: false
+    }
+
+    // this condition statement is added for compatibility reason, because
+    // in version 4.0.0 to 4.1.2, there's no `options` object, but a `forceNewVersion` flag
+    if (typeof options === 'boolean') {
+      extendOptions.warnIncompatibleVersions = !options
+    } else {
+      Object.assign(extendOptions, options)
+    }
+
     const pkg = this.generator.pkg
     const toMerge = isFunction(fields) ? fields(pkg) : fields
     for (const key in toMerge) {
@@ -198,17 +250,21 @@ class GeneratorAPI {
           existing || {},
           value,
           this.generator.depSources,
-          forceNewVersion
+          extendOptions
         )
-      } else if (!(key in pkg)) {
+      } else if (!extendOptions.merge || !(key in pkg)) {
         pkg[key] = value
       } else if (Array.isArray(value) && Array.isArray(existing)) {
         pkg[key] = mergeArrayWithDedupe(existing, value)
       } else if (isObject(value) && isObject(existing)) {
-        pkg[key] = merge(existing, value, { arrayMerge: mergeArrayWithDedupe })
+        pkg[key] = deepmerge(existing, value, { arrayMerge: mergeArrayWithDedupe })
       } else {
         pkg[key] = value
       }
+    }
+
+    if (extendOptions.prune) {
+      pruneObject(pkg)
     }
   }
 
@@ -230,7 +286,7 @@ class GeneratorAPI {
       this._injectFileMiddleware(async (files) => {
         const data = this._resolveData(additionalData)
         const globby = require('globby')
-        const _files = await globby(['**/*'], { cwd: source })
+        const _files = await globby(['**/*'], { cwd: source, dot: true })
         for (const rawPath of _files) {
           const targetPath = rawPath.split('/').map(filename => {
             // dotfiles are ignored when published to npm, therefore in templates
@@ -334,10 +390,20 @@ class GeneratorAPI {
    * @param {object} options additional options for the codemod
    */
   transformScript (file, codemod, options) {
+    const normalizedPath = this._normalizePath(file)
+
     this._injectFileMiddleware(files => {
-      files[file] = runCodemod(
+      if (typeof files[normalizedPath] === 'undefined') {
+        error(`Cannot find file ${normalizedPath}`)
+        return
+      }
+
+      files[normalizedPath] = runTransformation(
+        {
+          path: this.resolve(normalizedPath),
+          source: files[normalizedPath]
+        },
         codemod,
-        { path: this.resolve(file), source: files[file] },
         options
       )
     })
@@ -394,7 +460,18 @@ function extractCallDir () {
   const obj = {}
   Error.captureStackTrace(obj)
   const callSite = obj.stack.split('\n')[3]
-  const fileName = callSite.match(/\s\((.*):\d+:\d+\)$/)[1]
+
+  // the regexp for the stack when called inside a named function
+  const namedStackRegExp = /\s\((.*):\d+:\d+\)$/
+  // the regexp for the stack when called inside an anonymous
+  const anonymousStackRegExp = /at (.*):\d+:\d+$/
+
+  let matchResult = callSite.match(namedStackRegExp)
+  if (!matchResult) {
+    matchResult = callSite.match(anonymousStackRegExp)
+  }
+
+  const fileName = matchResult[1]
   return path.dirname(fileName)
 }
 

@@ -1,63 +1,34 @@
-module.exports = (api, {
-  classComponent,
-  tsLint,
-  lintOn = [],
-  convertJsToTs,
-  allowJs
-}, _, invoking) => {
-  if (typeof lintOn === 'string') {
-    lintOn = lintOn.split(',')
-  }
+const pluginDevDeps = require('../package.json').devDependencies
+
+module.exports = (
+  api,
+  { classComponent, skipLibCheck = true, convertJsToTs, allowJs },
+  rootOptions,
+  invoking
+) => {
+  const isKdu3 = rootOptions && rootOptions.kduVersion === '3'
 
   api.extendPackage({
     devDependencies: {
-      typescript: '~3.5.3'
+      typescript: pluginDevDeps.typescript
     }
   })
 
   if (classComponent) {
-    api.extendPackage({
-      dependencies: {
-        'kdu-class-component': '^7.0.2',
-        'kdu-property-decorator': '^8.3.0'
-      }
-    })
-  }
-
-  if (tsLint) {
-    api.extendPackage({
-      scripts: {
-        lint: 'kdu-cli-service lint'
-      }
-    })
-
-    if (!lintOn.includes('save')) {
+    if (isKdu3) {
       api.extendPackage({
-        kdu: {
-          lintOnSave: false
+        dependencies: {
+          'kdu-class-component': '^8.0.0'
+        }
+      })
+    } else {
+      api.extendPackage({
+        dependencies: {
+          'kdu-class-component': pluginDevDeps['kdu-class-component'],
+          'kdu-property-decorator': pluginDevDeps['kdu-property-decorator']
         }
       })
     }
-
-    if (lintOn.includes('commit')) {
-      api.extendPackage({
-        devDependencies: {
-          'lint-staged': '^9.4.2'
-        },
-        gitHooks: {
-          'pre-commit': 'lint-staged'
-        },
-        'lint-staged': {
-          '*.ts': ['kdu-cli-service lint', 'git add'],
-          '*.kdu': ['kdu-cli-service lint', 'git add']
-        }
-      })
-    }
-
-    // lint and fix files on creation complete
-    api.onCreateComplete(() => {
-      return require('../lib/tslint')({}, api, true)
-    })
   }
 
   // late invoke compat
@@ -69,10 +40,21 @@ module.exports = (api, {
   }
 
   api.render('./template', {
-    isTest: process.env.KDU_CLI_TEST || process.env.KDU_CLI_DEBUG,
+    skipLibCheck,
     hasMocha: api.hasPlugin('unit-mocha'),
-    hasJest: api.hasPlugin('unit-jest')
+    hasJest: api.hasPlugin('unit-jest'),
+    hasWebDriverIO: api.hasPlugin('e2e-webdriverio')
   })
 
-  require('./convert')(api, { tsLint, convertJsToTs })
+  if (isKdu3) {
+    api.render('./template-kdu3')
+
+    // In Kdu 3, TSX interface is defined
+    // So no need to manually add a shim.
+    api.render((files) => delete files['src/shims-tsx.d.ts'])
+  }
+
+  require('./convert')(api, { convertJsToTs })
 }
+
+module.exports.after = '@kdujs/cli-plugin-router'

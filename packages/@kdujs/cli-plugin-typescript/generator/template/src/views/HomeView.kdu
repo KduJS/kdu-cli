@@ -1,0 +1,37 @@
+---
+extend: '@kdujs/cli-plugin-router/generator/template/src/views/HomeView.kdu'
+when: "rootOptions.plugins && rootOptions.plugins['@kdujs/cli-plugin-router']"
+replace:
+  - !!js/regexp /Welcome to Your Kdu\.js App/
+  - !!js/regexp /<script>[^]*?<\/script>/
+---
+
+<%# REPLACE %>
+Welcome to Your Kdu.js + TypeScript App
+<%# END_REPLACE %>
+
+<%# REPLACE %>
+<script lang="ts">
+<%_ if (!options.classComponent) { _%>
+import Kdu from 'kdu';
+import HelloWorld from '@/components/HelloWorld.kdu'; // @ is an alias to /src
+
+export default Kdu.extend({
+  name: 'HomeView',
+  components: {
+    HelloWorld,
+  },
+});
+<%_ } else { _%>
+import { Component, Kdu } from 'kdu-property-decorator';
+import HelloWorld from '@/components/HelloWorld.kdu'; // @ is an alias to /src
+
+@Component({
+  components: {
+    HelloWorld,
+  },
+})
+export default class HomeView extends Kdu {}
+<%_ } _%>
+</script>
+<%# END_REPLACE %>

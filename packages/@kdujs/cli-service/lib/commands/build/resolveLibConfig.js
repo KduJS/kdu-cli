@@ -9,6 +9,8 @@ module.exports = (api, { entry, name, formats, filename, 'inline-kdu': inlineKdu
     process.exit(1)
   }
 
+  const kduMajor = require('../../util/getKduMajor')(api.getCwd())
+
   const fullEntryPath = api.resolve(entry)
 
   if (!fs.existsSync(fullEntryPath)) {
@@ -66,6 +68,7 @@ module.exports = (api, { entry, name, formats, filename, 'inline-kdu': inlineKdu
             inject: false,
             filename: 'demo.html',
             libName,
+            kduMajor,
             assetsFileName: filename,
             cssExtract: config.plugins.has('extract-css')
           }])
@@ -128,6 +131,11 @@ module.exports = (api, { entry, name, formats, filename, 'inline-kdu': inlineKdu
       // document.currentScript.src.
       publicPath: ''
     })
+
+    if (format === 'commonjs2') {
+      // #6188
+      delete rawConfig.output.library
+    }
 
     return rawConfig
   }

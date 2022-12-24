@@ -1,10 +1,11 @@
 {
   "name": "@kdujs/cli",
-  "version": "4.0.5",
+  "version": "5.0.0",
   "description": "Command line interface for rapid Kdu.js development",
   "bin": {
     "kdu": "bin/kdu.js"
   },
+  "types": "types/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kdujs/kdu-cli.git",
@@ -24,41 +25,44 @@
     "access": "public"
   },
   "dependencies": {
-    "@kdujs/cli-shared-utils": "^4.0.5",
-    "boxen": "^4.1.0",
-    "chalk": "^2.4.1",
-    "cmd-shim": "^2.0.2",
-    "commander": "^2.20.0",
+    "@types/ejs": "^3.0.6",
+    "@kdujs/cli-shared-utils": "^5.0.0",
+    "@types/inquirer": "^8.1.3",
+    "boxen": "^5.0.0",
+    "commander": "^7.1.0",
     "debug": "^4.1.0",
-    "deepmerge": "^3.2.0",
-    "didyoumean": "^1.2.1",
-    "download-git-repo": "^1.0.2",
-    "ejs": "^2.7.1",
-    "envinfo": "^7.4.0",
-    "execa": "^1.0.0",
-    "fs-extra": "^7.0.1",
-    "globby": "^9.2.0",
+    "deepmerge": "^4.2.2",
+    "download-git-repo": "^3.0.2",
+    "ejs": "^3.1.6",
+    "envinfo": "^7.7.4",
+    "fs-extra": "^9.1.0",
+    "globby": "^11.0.2",
     "import-global": "^0.1.0",
-    "inquirer": "^6.3.1",
-    "isbinaryfile": "^4.0.0",
-    "javascript-stringify": "^1.6.0",
-    "js-yaml": "^3.13.1",
-    "jscodeshift": "^0.6.4",
-    "kdu-jscodeshift-adapter": "^2.0.2",
+    "ini": "^2.0.0",
+    "inquirer": "^8.0.0",
+    "isbinaryfile": "^4.0.6",
+    "javascript-stringify": "^2.0.1",
+    "js-yaml": "^4.0.0",
+    "kdu": "^2.6.14",
+    "kdu-codemod": "^0.0.7",
+    "leven": "^3.1.0",
     "lodash.clonedeep": "^4.5.0",
-    "lru-cache": "^5.1.1",
-    "minimist": "^1.2.0",
-    "recast": "^0.18.1",
-    "request": "^2.87.0",
-    "request-promise-native": "^1.0.7",
-    "resolve": "^1.10.1",
-    "semver": "^6.1.0",
+    "lru-cache": "^6.0.0",
+    "minimist": "^1.2.5",
+    "pkg-dir": "^5.0.0",
+    "recast": "^0.20.3",
+    "resolve": "^1.20.0",
     "shortid": "^2.2.15",
     "slash": "^3.0.0",
+    "strip-ansi": "^6.0.0",
     "validate-npm-package-name": "^3.0.0",
-    "yaml-front-matter": "^3.4.1"
+    "yaml-front-matter": "^4.1.0"
+  },
+  "devDependencies": {
+    "@kdujs/cli-service": "^5.0.0",
+    "cmd-shim": "^4.1.0"
   },
   "engines": {
-    "node": ">=8.9"
+    "node": "^12.0.0 || >= 14.0.0"
   }
 }

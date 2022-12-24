@@ -1,9 +1,13 @@
-const chalk = require('chalk')
-const semver = require('semver')
 const invoke = require('./invoke')
 const inquirer = require('inquirer')
-const { loadModule } = require('@kdujs/cli-shared-utils')
+const {
+  chalk,
+  semver,
+  resolveModule,
+  loadModule
+} = require('@kdujs/cli-shared-utils')
 
+const getVersions = require('./util/getVersions')
 const PackageManager = require('./util/ProjectPackageManager')
 const {
   log,
@@ -13,23 +17,30 @@ const {
 } = require('@kdujs/cli-shared-utils')
 const confirmIfGitDirty = require('./util/confirmIfGitDirty')
 
-async function add (pluginName, options = {}, context = process.cwd()) {
+async function add (pluginToAdd, options = {}, context = process.cwd()) {
   if (!(await confirmIfGitDirty(context))) {
     return
   }
 
   // for `kdu add` command in 3.x projects
   const servicePkg = loadModule('@kdujs/cli-service/package.json', context)
-  if (semver.satisfies(servicePkg.version, '3.x')) {
+  if (servicePkg && semver.satisfies(servicePkg.version, '3.x')) {
     // special internal "plugins"
-    if (/^(@kdujs\/)?router$/.test(pluginName)) {
+    if (/^(@kdujs\/)?router$/.test(pluginToAdd)) {
       return addRouter(context)
     }
-    if (/^(@kdujs\/)?kdux$/.test(pluginName)) {
+    if (/^(@kdujs\/)?kdux$/.test(pluginToAdd)) {
       return addKdux(context)
     }
   }
 
+  const pluginRe = /^(@?[^@]+)(?:@(.+))?$/
+  const [
+    // eslint-disable-next-line
+    _skip,
+    pluginName,
+    pluginVersion
+  ] = pluginToAdd.match(pluginRe)
   const packageName = resolvePluginId(pluginName)
 
   log()
@@ -38,17 +49,24 @@ async function add (pluginName, options = {}, context = process.cwd()) {
 
   const pm = new PackageManager({ context })
 
-  const cliVersion = require('../package.json').version
-  if (isOfficialPlugin(packageName) && semver.prerelease(cliVersion)) {
-    await pm.add(`${packageName}@^${cliVersion}`)
+  if (pluginVersion) {
+    await pm.add(`${packageName}@${pluginVersion}`)
+  } else if (isOfficialPlugin(packageName)) {
+    const { latestMinor } = await getVersions()
+    await pm.add(`${packageName}@~${latestMinor}`)
   } else {
-    await pm.add(packageName)
+    await pm.add(packageName, { tilde: true })
   }
 
   log(`${chalk.green('✔')}  Successfully installed plugin: ${chalk.cyan(packageName)}`)
   log()
 
-  invoke(pluginName, options, context)
+  const generatorPath = resolveModule(`${packageName}/generator`, context)
+  if (generatorPath) {
+    invoke(pluginName, options, context)
+  } else {
+    log(`Plugin ${packageName} does not have a generator to invoke`)
+  }
 }
 
 module.exports = (...args) => {

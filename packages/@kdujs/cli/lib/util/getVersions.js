@@ -1,4 +1,4 @@
-const semver = require('semver')
+const { semver } = require('@kdujs/cli-shared-utils')
 const PackageManager = require('./ProjectPackageManager')
 const { loadOptions, saveOptions } = require('../options')
 
@@ -15,7 +15,8 @@ module.exports = async function getVersions () {
   if (process.env.KDU_CLI_TEST || process.env.KDU_CLI_DEBUG) {
     return (sessionCached = {
       current: local,
-      latest: local
+      latest: local,
+      latestMinor: local
     })
   }
 
@@ -44,9 +45,26 @@ module.exports = async function getVersions () {
     latest = cached
   }
 
+  // if the installed version is updated but the cache doesn't update
+  if (semver.gt(local, latest) && !semver.prerelease(local)) {
+    latest = local
+  }
+
+  let latestMinor = `${semver.major(latest)}.${semver.minor(latest)}.0`
+  if (
+    // if the latest version contains breaking changes
+    /major/.test(semver.diff(local, latest)) ||
+    // or if using `next` branch of cli
+    (semver.gte(local, latest) && semver.prerelease(local))
+  ) {
+    // fallback to the local cli version number
+    latestMinor = local
+  }
+
   return (sessionCached = {
     current: local,
     latest,
+    latestMinor,
     error
   })
 }

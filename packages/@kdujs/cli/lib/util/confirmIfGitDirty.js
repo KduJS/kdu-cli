@@ -1,7 +1,9 @@
-const execa = require('execa')
 const inquirer = require('inquirer')
-
-const { warn, hasProjectGit } = require('@kdujs/cli-shared-utils')
+const {
+  execa,
+  warn,
+  hasProjectGit
+} = require('@kdujs/cli-shared-utils')
 
 module.exports = async function confirmIfGitDirty (context) {
   if (process.env.KDU_CLI_SKIP_DIRTY_GIT_PROMPT || process.env.KDU_CLI_API_MODE) {
@@ -19,7 +21,7 @@ module.exports = async function confirmIfGitDirty (context) {
     return true
   }
 
-  warn(`There are uncommited changes in the current repository, it's recommended to commit or stash them first.`)
+  warn(`There are uncommitted changes in the current repository, it's recommended to commit or stash them first.`)
   const { ok } = await inquirer.prompt([
     {
       name: 'ok',

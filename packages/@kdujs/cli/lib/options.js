@@ -7,22 +7,52 @@ const { createSchema, validate } = require('@kdujs/cli-shared-utils/lib/validate
 
 const rcPath = exports.rcPath = getRcPath('.kdurc')
 
-const presetSchema = createSchema(joi => joi.object().keys({
-  bare: joi.boolean(),
-  useConfigFiles: joi.boolean(),
-  // TODO: Use warn for router and kdux once @hapi/joi v16 releases
-  router: joi.boolean(),
-  routerHistoryMode: joi.boolean(),
-  kdux: joi.boolean(),
-  cssPreprocessor: joi.string().only(['sass', 'dart-sass', 'node-sass', 'less', 'stylus']),
-  plugins: joi.object().required(),
-  configs: joi.object()
-}))
+const presetSchema = createSchema((joi) =>
+  joi
+    .object()
+    .keys({
+      kduVersion: joi.string().valid('2', '3'),
+      bare: joi.boolean(),
+      useConfigFiles: joi.boolean(),
+      router: joi
+        .boolean()
+        .warning('deprecate.error', {
+          message: 'Please use @kdujs/cli-plugin-router instead.'
+        })
+        .message({
+          'deprecate.error':
+            'The {#label} option in preset is deprecated. {#message}'
+        }),
+      routerHistoryMode: joi
+        .boolean()
+        .warning('deprecate.error', {
+          message: 'Please use @kdujs/cli-plugin-router instead.'
+        })
+        .message({
+          'deprecate.error':
+            'The {#label} option in preset is deprecated. {#message}'
+        }),
+      kdux: joi
+        .boolean()
+        .warning('deprecate.error', {
+          message: 'Please use @kdujs/cli-plugin-kdux instead.'
+        })
+        .message({
+          'deprecate.error':
+            'The {#label} option in preset is deprecated. {#message}'
+        }),
+      cssPreprocessor: joi
+        .string()
+        .valid('sass', 'dart-sass', 'less', 'stylus'),
+      plugins: joi.object().required(),
+      configs: joi.object()
+    })
+)
 
 const schema = createSchema(joi => joi.object().keys({
   latestVersion: joi.string().regex(/^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+)?$/),
   lastChecked: joi.date().timestamp(),
-  packageManager: joi.string().only(['yarn', 'npm', 'pnpm']),
+  packageManager: joi.string().valid('yarn', 'npm', 'pnpm'),
   useTaobaoRegistry: joi.boolean(),
   presets: joi.object().pattern(/^/, presetSchema)
 }))
@@ -50,7 +80,8 @@ exports.defaults = {
   packageManager: undefined,
   useTaobaoRegistry: undefined,
   presets: {
-    'default': exports.defaultPreset
+    'Default (Kdu 3)': Object.assign({ kduVersion: '3' }, exports.defaultPreset),
+    'Default (Kdu 2)': Object.assign({ kduVersion: '2' }, exports.defaultPreset)
   }
 }
 
@@ -68,7 +99,7 @@ exports.loadOptions = () => {
         `Error loading saved preferences: ` +
         `~/.kdurc may be corrupted or have syntax errors. ` +
         `Please fix/delete it and re-run kdu-cli in manual mode.\n` +
-        `(${e.message})`,
+        `(${e.message})`
       )
       exit(1)
     }
@@ -94,6 +125,7 @@ exports.saveOptions = toSave => {
   cachedOptions = options
   try {
     fs.writeFileSync(rcPath, JSON.stringify(options, null, 2))
+    return true
   } catch (e) {
     error(
       `Error saving preferences: ` +
@@ -106,5 +138,5 @@ exports.saveOptions = toSave => {
 exports.savePreset = (name, preset) => {
   const presets = cloneDeep(exports.loadOptions().presets || {})
   presets[name] = preset
-  exports.saveOptions({ presets })
+  return exports.saveOptions({ presets })
 }

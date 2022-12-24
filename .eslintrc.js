@@ -1,32 +1,32 @@
 module.exports = {
   extends: [
-    "plugin:kdu-libs/recommended"
+    '@kdujs/standard'
   ],
-  plugins: [
-    "node"
-  ],
-  env: {
-    "jest": true
-  },
   globals: {
     name: 'off'
   },
   rules: {
-    "indent": ["error", 2, {
-      "MemberExpression": "off"
+    indent: ['error', 2, {
+      MemberExpression: 'off'
     }],
-    "no-shadow": ["error"],
-    "node/no-extraneous-require": ["error", {
-      "allowModules": [
-        "@kdujs/cli-service"
+    quotes: [2, 'single', { avoidEscape: true, allowTemplateLiterals: true }],
+    'quote-props': 'off',
+    'no-shadow': ['error'],
+    'node/no-extraneous-require': ['error', {
+      allowModules: [
+        '@kdujs/cli-service',
+        '@kdujs/cli-test-utils'
       ]
     }]
   },
   overrides: [
     {
-      files: ['**/__tests__/**/*.js', "**/cli-test-utils/**/*.js"],
+      files: ['**/__tests__/**/*.js', '**/cli-test-utils/**/*.js'],
+      env: {
+        jest: true
+      },
       rules: {
-        "node/no-extraneous-require": "off"
+        'node/no-extraneous-require': 'off'
       }
     }
   ]

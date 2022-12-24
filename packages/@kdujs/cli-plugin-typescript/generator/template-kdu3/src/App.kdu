@@ -1,0 +1,37 @@
+---
+extend: '@kdujs/cli-service/generator/template/src/App.kdu'
+when: "rootOptions.plugins && !rootOptions.plugins['@kdujs/cli-plugin-router']"
+replace:
+  - !!js/regexp /Welcome to Your Kdu\.js App/g
+  - !!js/regexp /<script>[^]*?<\/script>/
+---
+
+<%# REPLACE %>
+Welcome to Your Kdu.js + TypeScript App
+<%# END_REPLACE %>
+
+<%# REPLACE %>
+<script lang="ts">
+<%_ if (!options.classComponent) { _%>
+import { defineComponent } from 'kdu';
+import HelloWorld from './components/HelloWorld.kdu';
+
+export default defineComponent({
+  name: 'App',
+  components: {
+    HelloWorld
+  }
+});
+<%_ } else { _%>
+import { Options, Kdu } from 'kdu-class-component';
+import HelloWorld from './components/HelloWorld.kdu';
+
+@Options({
+  components: {
+    HelloWorld,
+  },
+})
+export default class App extends Kdu {}
+<%_ } _%>
+</script>
+<%# END_REPLACE %>

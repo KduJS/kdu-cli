@@ -1,5 +1,6 @@
 exports.getPromptModules = () => {
   return [
+    'kduVersion',
     'babel',
     'typescript',
     'pwa',

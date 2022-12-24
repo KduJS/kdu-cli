@@ -8,11 +8,9 @@ Uses TypeScript + `ts-loader` + [fork-ts-checker-webpack-plugin](https://github.
 
 TypeScript can be configured via `tsconfig.json`.
 
+Since `3.0.0-rc.6`, `typescript` is now a peer dependency of this package, so you can use a specific version of TypeScript by updating your project's `package.json`.
+
 This plugin can be used alongside `@kdujs/cli-plugin-babel`. When used with Babel, this plugin will output ES2015 and delegate the rest to Babel for auto polyfill based on browser targets.
-
-## Injected Commands
-
-If opted to use [TSLint](https://palantir.github.io/tslint/) during project creation, `kdu-cli-service lint` will be injected.
 
 ## Caching
 
@@ -22,9 +20,11 @@ If opted to use [TSLint](https://palantir.github.io/tslint/) during project crea
 
 [thread-loader](https://github.com/webpack-contrib/thread-loader) is enabled by default when the machine has more than 1 CPU cores. This can be turned off by setting `parallel: false` in `kdu.config.js`.
 
+`parallel` should be set to `false` when using Typescript in combination with non-serializable loader options, such as regexes, dates and functions. These options would not be passed correctly to `ts-loader` which may lead to unexpected errors.
+
 ## Installing in an Already Created Project
 
-``` sh
+```bash
 kdu add typescript
 ```
 

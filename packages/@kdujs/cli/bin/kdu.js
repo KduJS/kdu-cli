@@ -3,16 +3,12 @@
 // Check node version before requiring/doing anything else
 // The user may be on a very old node version
 
-const chalk = require('chalk')
-const semver = require('semver')
+const { chalk, semver } = require('@kdujs/cli-shared-utils')
 const requiredVersion = require('../package.json').engines.node
-const didYouMean = require('didyoumean')
-
-// Setting edit distance to 60% of the input string's length
-didYouMean.threshold = 0.6
+const leven = require('leven')
 
 function checkNodeVersion (wanted, id) {
-  if (!semver.satisfies(process.version, wanted)) {
+  if (!semver.satisfies(process.version, wanted, { includePrerelease: true })) {
     console.log(chalk.red(
       'You are using Node ' + process.version + ', but this version of ' + id +
       ' requires Node ' + wanted + '.\nPlease upgrade your Node version.'
@@ -22,14 +18,6 @@ function checkNodeVersion (wanted, id) {
 }
 
 checkNodeVersion(requiredVersion, '@kdujs/cli')
-
-if (semver.satisfies(process.version, '9.x')) {
-  console.log(chalk.red(
-    `You are using Node ${process.version}.\n` +
-    `Node.js 9.x has already reached end-of-life and will not be supported in future major releases.\n` +
-    `It's strongly recommended to use an active LTS version instead.`
-  ))
-}
 
 const fs = require('fs')
 const path = require('path')
@@ -64,13 +52,12 @@ program
   .option('-g, --git [message]', 'Force git initialization with initial commit message')
   .option('-n, --no-git', 'Skip git initialization')
   .option('-f, --force', 'Overwrite target directory if it exists')
+  .option('--merge', 'Merge target directory if it exists')
   .option('-c, --clone', 'Use git clone when fetching remote preset')
-  .option('-x, --proxy', 'Use specified proxy when creating project')
+  .option('-x, --proxy <proxyUrl>', 'Use specified proxy when creating project')
   .option('-b, --bare', 'Scaffold project without beginner instructions')
   .option('--skipGetStarted', 'Skip displaying "Get started" instructions')
-  .action((name, cmd) => {
-    const options = cleanArgs(cmd)
-
+  .action((name, options) => {
     if (minimist(process.argv.slice(3))._.length > 1) {
       console.log(chalk.yellow('\n Info: You provided more than one argument. The first one will be used as the app\'s name, the rest are ignored.'))
     }
@@ -108,28 +95,23 @@ program
   .option('--rules', 'list all module rule names')
   .option('--plugins', 'list all plugin names')
   .option('-v --verbose', 'Show full function definitions in output')
-  .action((paths, cmd) => {
-    require('../lib/inspect')(paths, cleanArgs(cmd))
+  .action((paths, options) => {
+    require('../lib/inspect')(paths, options)
   })
 
 program
-  .command('serve [entry]')
-  .description('serve a .js or .kdu file in development mode with zero config')
-  .option('-o, --open', 'Open browser')
-  .option('-c, --copy', 'Copy local url to clipboard')
-  .option('-p, --port <port>', 'Port used by the server (default: 8080 or next available port)')
-  .action((entry, cmd) => {
-    loadCommand('serve', '@kdujs/cli-service-global').serve(entry, cleanArgs(cmd))
+  .command('serve')
+  .description('alias of "npm run serve" in the current project')
+  .allowUnknownOption()
+  .action(() => {
+    require('../lib/util/runNpmScript')('serve', process.argv.slice(3))
   })
 
 program
-  .command('build [entry]')
-  .description('build a .js or .kdu file in production mode with zero config')
-  .option('-t, --target <target>', 'Build target (app | lib | wc | wc-async, default: app)')
-  .option('-n, --name <name>', 'name for lib or web-component mode (default: entry filename)')
-  .option('-d, --dest <dir>', 'output directory (default: dist)')
-  .action((entry, cmd) => {
-    loadCommand('build', '@kdujs/cli-service-global').build(entry, cleanArgs(cmd))
+  .command('build')
+  .description('alias of "npm run build" in the current project')
+  .action((cmd) => {
+    require('../lib/util/runNpmScript')('build', process.argv.slice(3))
   })
 
 program
@@ -149,27 +131,36 @@ program
   .option('-d, --delete <path>', 'delete option from config')
   .option('-e, --edit', 'open config with default editor')
   .option('--json', 'outputs JSON result only')
-  .action((value, cmd) => {
-    require('../lib/config')(value, cleanArgs(cmd))
+  .action((value, options) => {
+    require('../lib/config')(value, options)
   })
 
 program
   .command('outdated')
   .description('(experimental) check for outdated kdu cli service / plugins')
   .option('--next', 'Also check for alpha / beta / rc versions when upgrading')
-  .action((cmd) => {
-    require('../lib/outdated')(cleanArgs(cmd))
+  .action((options) => {
+    require('../lib/outdated')(options)
   })
 
 program
   .command('upgrade [plugin-name]')
   .description('(experimental) upgrade kdu cli service / plugins')
-  .option('-t, --to <version>', 'upgrade <package-name> to a version that is not latest')
+  .option('-t, --to <version>', 'Upgrade <package-name> to a version that is not latest')
+  .option('-f, --from <version>', 'Skip probing installed plugin, assuming it is upgraded from the designated version')
   .option('-r, --registry <url>', 'Use specified npm registry when installing dependencies')
   .option('--all', 'Upgrade all plugins')
   .option('--next', 'Also check for alpha / beta / rc versions when upgrading')
-  .action((packageName, cmd) => {
-    require('../lib/upgrade')(packageName, cleanArgs(cmd))
+  .action((packageName, options) => {
+    require('../lib/upgrade')(packageName, options)
+  })
+
+program
+  .command('migrate [plugin-name]')
+  .description('(experimental) run migrator for an already-installed cli plugin')
+  .requiredOption('-f, --from <version>', 'The base version for the migrator to migrate from')
+  .action((packageName, options) => {
+    require('../lib/migrate')(packageName, options)
   })
 
 program
@@ -194,14 +185,13 @@ program
   })
 
 // output help information on unknown commands
-program
-  .arguments('<command>')
-  .action((cmd) => {
-    program.outputHelp()
-    console.log(`  ` + chalk.red(`Unknown command ${chalk.yellow(cmd)}.`))
-    console.log()
-    suggestCommands(cmd)
-  })
+program.on('command:*', ([cmd]) => {
+  program.outputHelp()
+  console.log(`  ` + chalk.red(`Unknown command ${chalk.yellow(cmd)}.`))
+  console.log()
+  suggestCommands(cmd)
+  process.exitCode = 1
+})
 
 // add some useful info on help
 program.on('--help', () => {
@@ -231,36 +221,19 @@ enhanceErrorMessages('optionMissingArgument', (option, flag) => {
 
 program.parse(process.argv)
 
-if (!process.argv.slice(2).length) {
-  program.outputHelp()
-}
-
 function suggestCommands (unknownCommand) {
-  const availableCommands = program.commands.map(cmd => {
-    return cmd._name
+  const availableCommands = program.commands.map(cmd => cmd._name)
+
+  let suggestion
+
+  availableCommands.forEach(cmd => {
+    const isBestMatch = leven(cmd, unknownCommand) < leven(suggestion || '', unknownCommand)
+    if (leven(cmd, unknownCommand) < 3 && isBestMatch) {
+      suggestion = cmd
+    }
   })
 
-  const suggestion = didYouMean(unknownCommand, availableCommands)
   if (suggestion) {
     console.log(`  ` + chalk.red(`Did you mean ${chalk.yellow(suggestion)}?`))
   }
-}
-
-function camelize (str) {
-  return str.replace(/-(\w)/g, (_, c) => c ? c.toUpperCase() : '')
-}
-
-// commander passes the Command object itself as options,
-// extract only actual options into a fresh object.
-function cleanArgs (cmd) {
-  const args = {}
-  cmd.options.forEach(o => {
-    const key = camelize(o.long.replace(/^--/, ''))
-    // if an option is not present and Command has a method with the same name
-    // it should not be copied
-    if (typeof cmd[key] !== 'function' && typeof cmd[key] !== 'undefined') {
-      args[key] = cmd[key]
-    }
-  })
-  return args
 }

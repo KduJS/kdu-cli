@@ -8,7 +8,8 @@ const officialPlugins = [
   'pwa',
   'router',
   'typescript',
-  'kdux'
+  'kdux',
+  'webpack-4'
 ]
 
 exports.isPlugin = id => pluginRE.test(id)

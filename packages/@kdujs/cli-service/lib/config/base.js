@@ -1,29 +1,23 @@
+const path = require('path')
+
+/** @type {import('@kdujs/cli-service').ServicePlugin} */
 module.exports = (api, options) => {
+  const cwd = api.getCwd()
+  const webpack = require('webpack')
+  const kduMajor = require('../util/getKduMajor')(cwd)
+
   api.chainWebpack(webpackConfig => {
     const isLegacyBundle = process.env.KDU_CLI_MODERN_MODE && !process.env.KDU_CLI_MODERN_BUILD
     const resolveLocal = require('../util/resolveLocal')
-    const getAssetPath = require('../util/getAssetPath')
-    const inlineLimit = 4096
 
-    const genAssetSubPath = dir => {
-      return getAssetPath(
-        options,
-        `${dir}/[name]${options.filenameHashing ? '.[hash:8]' : ''}.[ext]`
-      )
-    }
+    // https://github.com/webpack/webpack/issues/14532#issuecomment-947525539
+    webpackConfig.output.set('hashFunction', 'xxhash64')
 
-    const genUrlLoaderOptions = dir => {
-      return {
-        limit: inlineLimit,
-        // use explicit fallback to avoid regression in url-loader>=1.1.0
-        fallback: {
-          loader: 'file-loader',
-          options: {
-            name: genAssetSubPath(dir)
-          }
-        }
-      }
-    }
+    // https://github.com/webpack/webpack/issues/11467#issuecomment-691873586
+    webpackConfig.module
+      .rule('esm')
+        .test(/\.m?jsx?$/)
+        .resolve.set('fullySpecified', false)
 
     webpackConfig
       .mode('development')
@@ -47,12 +41,6 @@ module.exports = (api, options) => {
         .end()
       .alias
         .set('@', api.resolve('src'))
-        .set(
-          'kdu$',
-          options.runtimeCompiler
-            ? 'kdu/dist/kdu.esm.js'
-            : 'kdu/dist/kdu.runtime.esm.js'
-        )
 
     webpackConfig.resolveLoader
       .modules
@@ -66,67 +54,119 @@ module.exports = (api, options) => {
     // js is handled by cli-plugin-babel ---------------------------------------
 
     // kdu-loader --------------------------------------------------------------
-    const kduLoaderCacheConfig = api.genCacheConfig('kdu-loader', {
-      'kdu-loader': require('kdu-loader/package.json').version,
-      /* eslint-disable-next-line node/no-extraneous-require */
-      '@kdujs/component-compiler-utils': require('@kdujs/component-compiler-utils/package.json').version,
-      'kdu-template-compiler': require('kdu-template-compiler/package.json').version
-    })
+    let cacheLoaderPath
+    try {
+      cacheLoaderPath = require.resolve('cache-loader')
+    } catch (e) {}
+
+    if (kduMajor === 2) {
+      // for Kdu 2 projects
+      const kduLoaderCacheConfig = api.genCacheConfig('kdu-loader', {
+        'kdu-loader': require('@kdujs/kdu-loader-v15/package.json').version,
+        '@kdujs/component-compiler-utils': require('@kdujs/component-compiler-utils/package.json').version,
+        'kdu-template-compiler': require('kdu-template-compiler/package.json').version
+      })
+
+      webpackConfig.resolve
+        .alias
+          .set(
+            'kdu$',
+            options.runtimeCompiler
+              ? 'kdu/dist/kdu.esm.js'
+              : 'kdu/dist/kdu.runtime.esm.js'
+          )
+
+      if (cacheLoaderPath) {
+        webpackConfig.module
+          .rule('kdu')
+            .test(/\.kdu$/)
+            .use('cache-loader')
+              .loader(cacheLoaderPath)
+              .options(kduLoaderCacheConfig)
+      }
+
+      webpackConfig.module
+        .rule('kdu')
+          .test(/\.kdu$/)
+          .use('kdu-loader')
+            .loader(require.resolve('@kdujs/kdu-loader-v15'))
+            .options(Object.assign({
+              compilerOptions: {
+                whitespace: 'condense'
+              }
+            }, cacheLoaderPath ? kduLoaderCacheConfig : {}))
+
+      webpackConfig
+        .plugin('kdu-loader')
+          .use(require('@kdujs/kdu-loader-v15').KduLoaderPlugin)
+
+      // some plugins may implicitly relies on the `kdu-loader` dependency path name
+      // so we need a hotfix for that
+      webpackConfig
+        .resolveLoader
+          .modules
+            .prepend(path.resolve(__dirname, './kdu-loader-v15-resolve-compat'))
+    } else if (kduMajor === 3) {
+      // for Kdu 3 projects
+      const kduLoaderCacheConfig = api.genCacheConfig('kdu-loader', {
+        'kdu-loader': require('kdu-loader/package.json').version
+      })
+
+      webpackConfig.resolve
+        .alias
+          .set(
+            'kdu$',
+            options.runtimeCompiler
+              ? 'kdu/dist/kdu.esm-bundler.js'
+              : 'kdu/dist/kdu.runtime.esm-bundler.js'
+          )
+
+      if (cacheLoaderPath) {
+        webpackConfig.module
+          .rule('kdu')
+            .test(/\.kdu$/)
+            .use('cache-loader')
+              .loader(cacheLoaderPath)
+              .options(kduLoaderCacheConfig)
+      }
+
+      webpackConfig.module
+        .rule('kdu')
+          .test(/\.kdu$/)
+          .use('kdu-loader')
+            .loader(require.resolve('kdu-loader'))
+            .options({
+              ...kduLoaderCacheConfig,
+              babelParserPlugins: ['jsx', 'classProperties', 'decorators-legacy']
+            })
+
+      webpackConfig
+        .plugin('kdu-loader')
+          .use(require('kdu-loader').KduLoaderPlugin)
+
+      // feature flags
+      webpackConfig
+        .plugin('feature-flags')
+          .use(webpack.DefinePlugin, [{
+            __KDU_OPTIONS_API__: 'true',
+            __KDU_PROD_DEVTOOLS__: 'false'
+          }])
+    }
 
     webpackConfig.module
-      .rule('kdu')
+      .rule('kdu-style')
         .test(/\.kdu$/)
-        .use('cache-loader')
-          .loader('cache-loader')
-          .options(kduLoaderCacheConfig)
-          .end()
-        .use('kdu-loader')
-          .loader('kdu-loader')
-          .options(Object.assign({
-            compilerOptions: {
-              whitespace: 'condense'
-            }
-          }, kduLoaderCacheConfig))
-
-    webpackConfig
-      .plugin('kdu-loader')
-      .use(require('kdu-loader/lib/plugin'))
-
-    // static assets -----------------------------------------------------------
-
-    webpackConfig.module
-      .rule('images')
-        .test(/\.(png|jpe?g|gif|webp)(\?.*)?$/)
-        .use('url-loader')
-          .loader('url-loader')
-          .options(genUrlLoaderOptions('img'))
-
-    // do not base64-inline SVGs.
-    // https://github.com/facebookincubator/create-react-app/pull/1180
-    webpackConfig.module
-      .rule('svg')
-        .test(/\.(svg)(\?.*)?$/)
-        .use('file-loader')
-          .loader('file-loader')
-          .options({
-            name: genAssetSubPath('img')
-          })
-
-    webpackConfig.module
-      .rule('media')
-        .test(/\.(mp4|webm|ogg|mp3|wav|flac|aac)(\?.*)?$/)
-        .use('url-loader')
-          .loader('url-loader')
-          .options(genUrlLoaderOptions('media'))
-
-    webpackConfig.module
-      .rule('fonts')
-        .test(/\.(woff2?|eot|ttf|otf)(\?.*)?$/i)
-        .use('url-loader')
-          .loader('url-loader')
-          .options(genUrlLoaderOptions('fonts'))
+          .resourceQuery(/type=style/)
+            .sideEffects(true)
 
     // Other common pre-processors ---------------------------------------------
+    const maybeResolve = name => {
+      try {
+        return require.resolve(name)
+      } catch (error) {
+        return name
+      }
+    }
 
     webpackConfig.module
       .rule('pug')
@@ -134,41 +174,22 @@ module.exports = (api, options) => {
           .oneOf('pug-kdu')
             .resourceQuery(/kdu/)
             .use('pug-plain-loader')
-              .loader('pug-plain-loader')
+              .loader(maybeResolve('pug-plain-loader'))
               .end()
             .end()
           .oneOf('pug-template')
             .use('raw')
-              .loader('raw-loader')
+              .loader(maybeResolve('raw-loader'))
               .end()
             .use('pug-plain-loader')
-              .loader('pug-plain-loader')
+              .loader(maybeResolve('pug-plain-loader'))
               .end()
             .end()
-
-    // shims
-
-    webpackConfig.node
-      .merge({
-        // prevent webpack from injecting useless setImmediate polyfill because Kdu
-        // source contains it (although only uses it if it's native).
-        setImmediate: false,
-        // process is injected via DefinePlugin, although some 3rd party
-        // libraries may require a mock to work properly (#934)
-        process: 'mock',
-        // prevent webpack from injecting mocks to Node native modules
-        // that does not make sense for the client
-        dgram: 'empty',
-        fs: 'empty',
-        net: 'empty',
-        tls: 'empty',
-        child_process: 'empty'
-      })
 
     const resolveClientEnv = require('../util/resolveClientEnv')
     webpackConfig
       .plugin('define')
-        .use(require('webpack').DefinePlugin, [
+        .use(webpack.DefinePlugin, [
           resolveClientEnv(options)
         ])
 

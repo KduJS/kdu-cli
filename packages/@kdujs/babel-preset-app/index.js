@@ -1,4 +1,5 @@
 const path = require('path')
+const semver = require('semver')
 
 const defaultPolyfills = [
   // promise polyfill alone doesn't work in IE,
@@ -9,21 +10,87 @@ const defaultPolyfills = [
   // this is needed for object rest spread support in templates
   // as kdu-template-es2015-compiler 1.8+ compiles it to Object.assign() calls.
   'es.object.assign',
-  // #2012 es6.promise replaces native Promise in FF and causes missing finally
+  // #2012 es.promise replaces native Promise in FF and causes missing finally
   'es.promise.finally'
 ]
 
-function getPolyfills (targets, includes, { ignoreBrowserslistConfig, configPath }) {
-  const { isPluginRequired } = require('@babel/preset-env')
-  const builtInsList = require('core-js-compat/data')
-  const getTargets = require('@babel/preset-env/lib/targets-parser').default
-  const builtInTargets = getTargets(targets, {
-    ignoreBrowserslistConfig,
-    configPath
-  })
+const {
+  default: getTargets,
+  isRequired
+} = require('@babel/helper-compilation-targets')
 
+// We'll no longer need this logic in Babel 8 as it's the default behavior
+// See discussions at:
+// https://github.com/babel/rfcs/pull/2#issuecomment-714785228
+// https://github.com/babel/babel/pull/12189
+function getIntersectionTargets (targets, constraintTargets) {
+  const intersection = Object.keys(constraintTargets).reduce(
+    (results, browser) => {
+      // exclude the browsers that the user does not need
+      if (!targets[browser]) {
+        return results
+      }
+
+      // if the user-specified version is higher the minimum version that supports esmodule, than use it
+      results[browser] = semver.gt(
+        semver.coerce(constraintTargets[browser]),
+        semver.coerce(targets[browser])
+      )
+        ? constraintTargets[browser]
+        : targets[browser]
+
+      return results
+    },
+    {}
+  )
+
+  return intersection
+}
+
+function getModuleTargets (targets) {
+  const allModuleTargets = getTargets(
+    { esmodules: true },
+    { ignoreBrowserslistConfig: true }
+  )
+
+  // use the intersection of modern mode browsers and user defined targets config
+  return getIntersectionTargets(targets, allModuleTargets)
+}
+
+function getWCTargets (targets) {
+  // targeting browsers that at least support ES2015 classes
+  // https://github.com/babel/babel/blob/v7.9.6/packages/babel-compat-data/data/plugins.json#L194-L204
+  const allWCTargets = getTargets(
+    {
+      browsers: [
+        'Chrome >= 46',
+        'Firefox >= 45',
+        'Safari >= 10',
+        'Edge >= 13',
+        'iOS >= 10',
+        'Electron >= 0.36'
+      ]
+    },
+    { ignoreBrowserslistConfig: true }
+  )
+
+  // use the intersection of browsers supporting Web Components and user defined targets config
+  return getIntersectionTargets(targets, allWCTargets)
+}
+
+function getPolyfills (targets, includes) {
+  // if no targets specified, include all default polyfills
+  if (!targets || !Object.keys(targets).length) {
+    return includes
+  }
+
+  const compatData = require('core-js-compat').data
   return includes.filter(item => {
-    return isPluginRequired(builtInTargets, builtInsList[item])
+    if (!compatData[item]) {
+      throw new Error(`Cannot find polyfill ${item}, please refer to 'core-js-compat' for a complete list of available modules`)
+    }
+
+    return isRequired(item, targets, { compatData })
   })
 }
 
@@ -32,12 +99,12 @@ module.exports = (context, options = {}) => {
   const plugins = []
   const defaultEntryFiles = JSON.parse(process.env.KDU_CLI_ENTRY_FILES || '[]')
 
-  // Though in the kdu-cli repo, we only use the two envrionment variables
+  // Though in the kdu-cli repo, we only use the two environment variables
   // for tests, users may have relied on them for some features,
   // dropping them may break some projects.
   // So in the following blocks we don't directly test the `NODE_ENV`.
   // Rather, we turn it into the two commonly used feature flags.
-  if (process.env.NODE_ENV === 'test') {
+  if (!process.env.KDU_CLI_TEST && process.env.NODE_ENV === 'test') {
     // Both Jest & Mocha set NODE_ENV to 'test'.
     // And both requires the `node` target.
     process.env.KDU_CLI_BABEL_TARGET_NODE = 'true'
@@ -49,19 +116,36 @@ module.exports = (context, options = {}) => {
 
   // JSX
   if (options.jsx !== false) {
-    presets.push([require('@kdujs/babel-preset-jsx'), typeof options.jsx === 'object' ? options.jsx : {}])
+    let jsxOptions = {}
+    if (typeof options.jsx === 'object') {
+      jsxOptions = options.jsx
+    }
+
+    let kduVersion = 2
+    try {
+      const Kdu = require('kdu')
+      kduVersion = semver.major(Kdu.version)
+    } catch (e) {}
+
+    if (kduVersion === 2) {
+      presets.push([require('@kdujs/babel-preset-jsx'), jsxOptions])
+    } else if (kduVersion === 3) {
+      plugins.push([require('@kdujs/babel-plugin-jsx'), jsxOptions])
+    }
   }
 
   const runtimePath = path.dirname(require.resolve('@babel/runtime/package.json'))
+  const runtimeVersion = require('@babel/runtime/package.json').version
   const {
     polyfills: userPolyfills,
     loose = false,
     debug = false,
     useBuiltIns = 'usage',
     modules = false,
+    bugfixes = true,
     targets: rawTargets,
     spec,
-    ignoreBrowserslistConfig = !!process.env.KDU_CLI_MODERN_BUILD,
+    ignoreBrowserslistConfig,
     configPath,
     include,
     exclude,
@@ -73,37 +157,31 @@ module.exports = (context, options = {}) => {
     entryFiles = defaultEntryFiles,
 
     // Undocumented option of @babel/plugin-transform-runtime.
-    // When enabled, an absolute path is used when importing a runtime helper atfer tranforming.
+    // When enabled, an absolute path is used when importing a runtime helper after transforming.
     // This ensures the transpiled file always use the runtime version required in this package.
     // However, this may cause hash inconsistency if the project is moved to another directory.
     // So here we allow user to explicit disable this option if hash consistency is a requirement
     // and the runtime version is sure to be correct.
-    absoluteRuntime = runtimePath
+    absoluteRuntime = runtimePath,
+
+    // https://babeljs.io/docs/en/babel-plugin-transform-runtime#version
+    // By default transform-runtime assumes that @babel/runtime@7.0.0-beta.0 is installed, which means helpers introduced later than 7.0.0-beta.0 will be inlined instead of imported.
+    // See https://github.com/babel/babel/issues/10261
+    // And https://github.com/facebook/docusaurus/pull/2111
+    version = runtimeVersion
   } = options
 
-  // resolve targets
-  let targets
+  // resolve targets for preset-env
+  let targets = getTargets(rawTargets, { ignoreBrowserslistConfig, configPath })
   if (process.env.KDU_CLI_BABEL_TARGET_NODE) {
     // running tests in Node.js
     targets = { node: 'current' }
   } else if (process.env.KDU_CLI_BUILD_TARGET === 'wc' || process.env.KDU_CLI_BUILD_TARGET === 'wc-async') {
     // targeting browsers that at least support ES2015 classes
-    // https://github.com/babel/babel/blob/master/packages/babel-preset-env/data/plugins.json#L52-L61
-    targets = {
-      browsers: [
-        'Chrome >= 49',
-        'Firefox >= 45',
-        'Safari >= 10',
-        'Edge >= 13',
-        'iOS >= 10',
-        'Electron >= 0.36'
-      ]
-    }
+    targets = getWCTargets(targets)
   } else if (process.env.KDU_CLI_MODERN_BUILD) {
-    // targeting browsers that support <script type="module">
-    targets = { esmodules: true }
-  } else {
-    targets = rawTargets
+    // targeting browsers that at least support <script type="module">
+    targets = getModuleTargets(targets)
   }
 
   // included-by-default polyfills. These are common polyfills that 3rd party
@@ -115,13 +193,9 @@ module.exports = (context, options = {}) => {
   if (
     buildTarget === 'app' &&
     useBuiltIns === 'usage' &&
-    !process.env.KDU_CLI_BABEL_TARGET_NODE &&
-    !process.env.KDU_CLI_MODERN_BUILD
+    !process.env.KDU_CLI_BABEL_TARGET_NODE
   ) {
-    polyfills = getPolyfills(targets, userPolyfills || defaultPolyfills, {
-      ignoreBrowserslistConfig,
-      configPath
-    })
+    polyfills = getPolyfills(targets, userPolyfills || defaultPolyfills)
     plugins.push([
       require('./polyfillsPlugin'),
       { polyfills, entryFiles, useAbsolutePath: !!absoluteRuntime }
@@ -131,7 +205,8 @@ module.exports = (context, options = {}) => {
   }
 
   const envOptions = {
-    corejs: 3,
+    bugfixes,
+    corejs: useBuiltIns ? require('core-js/package.json').version : false,
     spec,
     loose,
     debug,
@@ -167,7 +242,7 @@ module.exports = (context, options = {}) => {
       decoratorsBeforeExport,
       legacy: decoratorsLegacy !== false
     }],
-    [require('@babel/plugin-proposal-class-properties'), { loose }],
+    [require('@babel/plugin-proposal-class-properties'), { loose }]
   )
 
   // transform runtime, but only for helpers
@@ -180,27 +255,28 @@ module.exports = (context, options = {}) => {
     helpers: useBuiltIns === 'usage',
     useESModules: !process.env.KDU_CLI_BABEL_TRANSPILE_MODULES,
 
-    absoluteRuntime
+    absoluteRuntime,
+
+    version
   }])
 
-  // use @babel/runtime-corejs3 so that helpers that need polyfillable APIs will reference core-js instead.
-  // if useBuiltIns is not set to 'usage', then it means users would take care of the polyfills on their own,
-  // i.e., core-js 3 is no longer needed.
-  // this extra plugin can be removed once one of the two issues resolves:
-  // https://github.com/babel/babel/issues/7597
-  // https://github.com/babel/babel/issues/9903
-  if (useBuiltIns === 'usage' && !process.env.KDU_CLI_MODERN_BUILD) {
-    const runtimeCoreJs3Path = path.dirname(require.resolve('@babel/runtime-corejs3/package.json'))
-    plugins.push([require('babel-plugin-module-resolver'), {
-      alias: {
-        '@babel/runtime': '@babel/runtime-corejs3',
-        [runtimePath]: runtimeCoreJs3Path
-      }
-    }])
-  }
-
   return {
-    presets,
-    plugins
+    sourceType: 'unambiguous',
+    overrides: [{
+      exclude: [/@babel[/|\\\\]runtime/, /core-js/],
+      presets,
+      plugins
+    }, {
+      // there are some untranspiled code in @babel/runtime
+      // https://github.com/babel/babel/issues/9903
+      include: [/@babel[/|\\\\]runtime/],
+      presets: [
+        [require('@babel/preset-env'), envOptions]
+      ]
+    }]
   }
 }
+
+// a special flag to tell @kdujs/cli-plugin-babel to include @babel/runtime for transpilation
+// otherwise the above `include` option won't take effect
+process.env.KDU_CLI_TRANSPILE_BABEL_RUNTIME = true
