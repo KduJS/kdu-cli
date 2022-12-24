@@ -3,10 +3,6 @@ const path = require('path')
 module.exports = (api, projectOptions) => {
   const useThreads = process.env.NODE_ENV === 'production' && !!projectOptions.parallel
 
-  const { semver, loadModule } = require('@kdujs/cli-shared-utils')
-  const kdu = loadModule('kdu', api.service.context)
-  const isKdu3 = (kdu && semver.major(kdu.version) === 3)
-
   api.chainWebpack(config => {
     config.resolveLoader.modules.prepend(path.join(__dirname, 'node_modules'))
 
@@ -82,6 +78,15 @@ module.exports = (api, projectOptions) => {
     // this plugin does not play well with jest + cypress setup (tsPluginE2e.spec.js) somehow
     // so temporarily disabled for kdu-cli tests
     if (!process.env.KDU_CLI_TEST) {
+      let kduCompilerPath
+      try {
+        // Kdu 2.7+
+        kduCompilerPath = require.resolve('kdu/compiler-sfc')
+      } catch (e) {
+        // Kdu 2.6 and lower versions
+        kduCompilerPath = require.resolve('kdu-template-compiler')
+      }
+
       config
         .plugin('fork-ts-checker')
         .use(require('fork-ts-checker-webpack-plugin'), [{
@@ -89,7 +94,7 @@ module.exports = (api, projectOptions) => {
             extensions: {
               kdu: {
                 enabled: true,
-                compiler: isKdu3 ? require.resolve('kdu/compiler-sfc') : require.resolve('kdu-template-compiler')
+                compiler: kduCompilerPath
               }
             },
             diagnosticOptions: {

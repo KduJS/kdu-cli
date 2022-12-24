@@ -61,11 +61,18 @@ module.exports = (api, options) => {
 
     if (kduMajor === 2) {
       // for Kdu 2 projects
-      const kduLoaderCacheConfig = api.genCacheConfig('kdu-loader', {
+      const partialIdentifier = {
         'kdu-loader': require('@kdujs/kdu-loader-v15/package.json').version,
-        '@kdujs/component-compiler-utils': require('@kdujs/component-compiler-utils/package.json').version,
-        'kdu-template-compiler': require('kdu-template-compiler/package.json').version
-      })
+        '@kdujs/component-compiler-utils': require('@kdujs/component-compiler-utils/package.json').version
+      }
+
+      try {
+        partialIdentifier['kdu-template-compiler'] = require('kdu-template-compiler/package.json').version
+      } catch (e) {
+        // For Kdu 2.7 projects, `kdu-template-compiler` is not required
+      }
+
+      const kduLoaderCacheConfig = api.genCacheConfig('kdu-loader', partialIdentifier)
 
       webpackConfig.resolve
         .alias

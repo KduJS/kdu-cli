@@ -1,6 +1,6 @@
 {
   "name": "@kdujs/cli-plugin-kdux",
-  "version": "5.0.1",
+  "version": "5.0.8",
   "description": "Kdux plugin for kdu-cli",
   "main": "index.js",
   "repository": {
