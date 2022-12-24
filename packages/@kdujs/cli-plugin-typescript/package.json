@@ -1,6 +1,6 @@
 {
   "name": "@kdujs/cli-plugin-typescript",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "typescript plugin for kdu-cli",
   "main": "index.js",
   "repository": {
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@babel/core": "^7.12.16",
-    "@kdujs/cli-shared-utils": "^5.0.0",
+    "@kdujs/cli-shared-utils": "^5.0.1",
     "@types/webpack-env": "^1.15.2",
     "babel-loader": "^8.2.2",
     "fork-ts-checker-webpack-plugin": "^6.4.0",
