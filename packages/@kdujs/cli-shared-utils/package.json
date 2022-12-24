@@ -1,6 +1,6 @@
 {
   "name": "@kdujs/cli-shared-utils",
-  "version": "5.0.8",
+  "version": "5.0.10",
   "description": "shared utilities for kdu-cli packages",
   "main": "index.js",
   "repository": {

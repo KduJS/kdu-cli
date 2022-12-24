@@ -1,6 +1,6 @@
 {
   "name": "@kdujs/cli-init",
-  "version": "5.0.8",
+  "version": "5.0.10",
   "description": "init addon for kdu-cli",
   "main": "index.js",
   "publishConfig": {
