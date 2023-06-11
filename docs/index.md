@@ -4,22 +4,12 @@ heroImage: /favicon.png
 actionText: Get Started →
 actionLink: /guide/
 
-features:
-  - title: Feature Rich
-    details: Out-of-the-box support for Babel, TypeScript, ESLint, PostCSS, PWA, Unit Testing & End-to-end Testing.
-  - title: Extensible
-    details: The plugin system allows the community to build and share reusable solutions to common needs.
-  - title: No Need to Eject
-    details: Kdu CLI is fully configurable without the need for ejecting. This allows your project to stay up-to-date for the long run.
-  - title: Graphical User Interface
-    details: Create, develop and manage your projects through an accompanying graphical user interface.
-  - title:
-    details:
-  - title: Future Ready
-    details: Effortlessly ship native ES2015 code for modern browsers, or build your kdu components as native web components.
-
 footer: MIT Licensed | Copyright © 2021-present NKDuy
 ---
+
+:::warning Kdu CLI is in Maintenance Mode!
+For new projects, please use [create-kdu](https://github.com/kdujs/create-kdu) to scaffold [Wite](https://witejs.web.app/)-based projects. Also refer to the [Kdu 3 Tooling Guide](https://kdu-js.web.app/guide/scaling-up/tooling.html) for the latest recommendations.
+:::
 
 ## Getting Started
 
