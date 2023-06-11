@@ -30,9 +30,13 @@ export default {
 
 function notice_en() {
   return h('div', { class: 'warning custom-block' }, [
-    h('p', { class: 'custom-block-title' }, '⚠️ Notice'),
+    h(
+      'p',
+      { class: 'custom-block-title' },
+      '⚠️ Kdu CLI is in Maintenance Mode!'
+    ),
     h('p', [
-      'Kdu CLI is now in maintenance mode. For new projects, please use ',
+      'For new projects, it is now recommended to use ',
       h(
         'a',
         {
@@ -44,10 +48,6 @@ function notice_en() {
       ' to scaffold ',
       h('a', { href: 'https://witejs.web.app', target: '_blank' }, 'Wite'),
       '-based projects. ',
-      h('code', 'create-kdu'),
-      ' supports both Kdu 2 and Kdu 3.'
-    ]),
-    h('p', [
       'Also refer to the ',
       h(
         'a',
