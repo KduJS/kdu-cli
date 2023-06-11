@@ -4,10 +4,6 @@ sidebarDepth: 0
 
 # Overview
 
-::: warning
-This documentation is for `@kdujs/cli`.
-:::
-
 Kdu CLI is a full system for rapid Kdu.js development, providing:
 
 - Interactive project scaffolding via `@kdujs/cli`.
